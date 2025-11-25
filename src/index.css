@@ -140,8 +140,9 @@ All colors MUST be HSL.
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  /* Use standard box-sizing and avoid applying non-standard utility which may not exist */
+  *, *::before, *::after {
+    box-sizing: border-box;
   }
 
   body {

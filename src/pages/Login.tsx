@@ -5,13 +5,41 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("demo@devboard.local");
+  const [password, setPassword] = useState("password123");
+  const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/");
+
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        alert(err?.message || "Login failed");
+        return;
+      }
+
+      const data = await res.json();
+      if (data?.token) {
+        localStorage.setItem("token", data.token);
+        navigate("/");
+      } else {
+        alert("Login failed: no token returned");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error");
+    }
   };
 
   return (
@@ -39,6 +67,8 @@ export default function Login() {
                 type="email"
                 placeholder="you@example.com"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -47,6 +77,8 @@ export default function Login() {
                 id="password"
                 type="password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             <div className="flex items-center justify-between">
