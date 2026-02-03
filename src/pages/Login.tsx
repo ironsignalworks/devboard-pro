@@ -51,7 +51,7 @@ export default function Login() {
           <div className="flex justify-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
               <img
-                src="/logo_app.png"
+                src={`${import.meta.env.BASE_URL}logo_app.png`}
                 alt="DevBoard Pro"
                 className="h-8 w-8 object-contain"
               />

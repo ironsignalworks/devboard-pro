@@ -35,7 +35,7 @@ export function AppSidebar() {
         <div className={`flex h-full w-full items-center gap-2 ${isCollapsed ? "justify-center" : ""}`}>
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-transparent shrink-0">
             <img
-              src="/logo_app.png"
+              src={`${import.meta.env.BASE_URL}logo_app.png`}
               alt="DevBoard Pro"
               className="h-8 w-8 object-contain"
             />

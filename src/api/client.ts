@@ -1,6 +1,6 @@
 // Default to empty string so requests to "/api" go through Vite dev server proxy in development.
 // Set VITE_API_URL when you need to target a different backend (e.g. production build).
-const API = import.meta.env.VITE_API_URL || ''
+const API = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 
 const parseResponse = async (res: Response) => {
   if (res.status === 204) return null

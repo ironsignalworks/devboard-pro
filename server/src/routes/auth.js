@@ -50,7 +50,7 @@ const resetLimiter = rateLimit({
 
 const cookieOptions = {
   httpOnly: true,
-  sameSite: "lax",
+  sameSite: isProd ? "none" : "lax",
   secure: isProd,
 };
 
