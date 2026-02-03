@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevBoard</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var segmentCount = 1;
+        var l = window.location;
+        var origin = l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "");
+        var path = l.pathname.split("/").slice(1);
+        var base = path.slice(0, segmentCount + 1).join("/");
+        var rest = path.slice(segmentCount + 1).join("/");
+        var search = l.search ? l.search.replace(/&/g, "~and~") : "";
+        var newUrl = origin + "/" + base + "/?/" + rest + search + l.hash;
+        l.replace(newUrl);
+      })();
+    </script>
+  </body>
+</html>

@@ -77,6 +77,11 @@ Server env:
 - `JWT_SECRET` for signing tokens.
 - `SMTP_*` + `APP_URL` for email verification/reset flows.
 
+To prevent accidentally committing env files, enable the repo hook:
+```sh
+git config core.hooksPath .githooks
+```
+
 ## CI
 
 GitHub Actions runs lint + tests for the client and server:

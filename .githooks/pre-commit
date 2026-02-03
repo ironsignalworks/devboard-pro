@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+set -eu
+
+blocked_files=".env server/.env"
+
+for file in $blocked_files; do
+  if git diff --cached --name-only | grep -x "$file" >/dev/null 2>&1; then
+    echo "ERROR: Refusing to commit $file (secrets file)." >&2
+    echo "Remove it from the commit and try again." >&2
+    exit 1
+  fi
+done
+
+secret_patterns="(MONGO_URI=|SMTP_PASS=|JWT_SECRET=|API_KEY=|SECRET=|PASSWORD=)"
+staged_files="$(git diff --cached --name-only)"
+
+for file in $staged_files; do
+  case "$file" in
+    *.example|.githooks/*) continue ;;
+  esac
+
+  if git show ":$file" 2>/dev/null | grep -E "$secret_patterns" >/dev/null 2>&1; then
+    echo "ERROR: Potential secret found in staged file: $file" >&2
+    echo "Remove the secret or move it to env vars before committing." >&2
+    exit 1
+  fi
+done
+
+exit 0
