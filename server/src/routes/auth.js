@@ -84,7 +84,7 @@ const sendResetEmail = async (to, resetUrl) => {
   await smtpTransport.sendMail({
     from,
     to,
-    subject: "Reset your DevBoard password",
+    subject: "Reset your DevBoard Pro password",
     text: `Reset your password: ${resetUrl}`,
     html: `<p>Reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
   });
@@ -97,7 +97,7 @@ const sendVerifyEmail = async (to, verifyUrl) => {
   await smtpTransport.sendMail({
     from,
     to,
-    subject: "Verify your DevBoard email",
+    subject: "Verify your DevBoard Pro email",
     text: `Verify your email: ${verifyUrl}`,
     html: `<p>Verify your email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
   });

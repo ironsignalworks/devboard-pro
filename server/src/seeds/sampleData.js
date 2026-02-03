@@ -19,7 +19,7 @@ export const seedSampleData = async () => {
     await user.save();
 
     const notes = [
-      { title: "Welcome to DevBoard", content: "This is a sample note.", user: user._id },
+      { title: "Welcome to DevBoard Pro", content: "This is a sample note.", user: user._id },
       { title: "How to use", content: "Try creating notes and projects.", user: user._id },
     ];
 

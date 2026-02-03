@@ -66,7 +66,7 @@ export default function Register() {
           <div>
             <CardTitle className="text-2xl">Create an account</CardTitle>
             <CardDescription>
-              Get started with DevBoard today
+              Get started with DevBoard Pro today
             </CardDescription>
           </div>
         </CardHeader>

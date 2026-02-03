@@ -36,12 +36,12 @@ export function AppSidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-transparent shrink-0">
             <img
               src="/logo_app.png"
-              alt="DevBoard"
+              alt="DevBoard Pro"
               className="h-8 w-8 object-contain"
             />
           </div>
           {!isCollapsed && (
-            <span className="text-lg font-semibold text-sidebar-foreground">DevBoard</span>
+            <span className="text-lg font-semibold text-sidebar-foreground">DevBoard Pro</span>
           )}
         </div>
       </SidebarHeader>

@@ -59,7 +59,7 @@ app.options(
 app.use(express.json());
 app.use(cookieParser());
 
-app.get("/", (req, res) => res.send("DevBoard API running"));
+app.get("/", (req, res) => res.send("DevBoard Pro API running"));
 app.use("/api/auth", authRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/snippets", snippetRoutes);
