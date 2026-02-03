@@ -81,27 +81,37 @@ const clearAuthCookies = (res) => {
 const sendResetEmail = async (to, resetUrl) => {
   if (!smtpTransport) return false;
   const from = process.env.SMTP_FROM || "no-reply@devboard.local";
-  await smtpTransport.sendMail({
-    from,
-    to,
-    subject: "Reset your DevBoard Pro password",
-    text: `Reset your password: ${resetUrl}`,
-    html: `<p>Reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-  });
-  return true;
+  try {
+    await smtpTransport.sendMail({
+      from,
+      to,
+      subject: "Reset your DevBoard Pro password",
+      text: `Reset your password: ${resetUrl}`,
+      html: `<p>Reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+    });
+    return true;
+  } catch (err) {
+    console.error("SMTP reset email error:", err?.message || err);
+    return false;
+  }
 };
 
 const sendVerifyEmail = async (to, verifyUrl) => {
   if (!smtpTransport) return false;
   const from = process.env.SMTP_FROM || "no-reply@devboard.local";
-  await smtpTransport.sendMail({
-    from,
-    to,
-    subject: "Verify your DevBoard Pro email",
-    text: `Verify your email: ${verifyUrl}`,
-    html: `<p>Verify your email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-  });
-  return true;
+  try {
+    await smtpTransport.sendMail({
+      from,
+      to,
+      subject: "Verify your DevBoard Pro email",
+      text: `Verify your email: ${verifyUrl}`,
+      html: `<p>Verify your email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+    });
+    return true;
+  } catch (err) {
+    console.error("SMTP verify email error:", err?.message || err);
+    return false;
+  }
 };
 
 const isValidEmail = (email) => /.+@.+\..+/.test(email);

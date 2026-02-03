@@ -1,4 +1,3 @@
-import { Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,8 +58,12 @@ export default function Register() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-              <Code2 className="h-7 w-7 text-primary-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+              <img
+                src={`${import.meta.env.BASE_URL}logo_app.png`}
+                alt="DevBoard Pro"
+                className="h-8 w-8 object-contain"
+              />
             </div>
           </div>
           <div>
