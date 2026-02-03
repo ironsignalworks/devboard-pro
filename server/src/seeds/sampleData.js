@@ -10,7 +10,12 @@ export const seedSampleData = async () => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash("password123", salt);
 
-    const user = new User({ name: "Demo User", email: "demo@devboard.local", passwordHash: hash });
+    const user = new User({
+      name: "Demo User",
+      email: "demo@devboard.local",
+      passwordHash: hash,
+      isEmailVerified: true,
+    });
     await user.save();
 
     const notes = [

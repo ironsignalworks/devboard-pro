@@ -60,6 +60,29 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Environment setup
+
+Copy the example env files and update values as needed:
+
+```sh
+cp .env.example .env
+cp server/.env.example server/.env
+```
+
+Client env:
+- `VITE_API_URL` should point to your API (default `http://localhost:4000`).
+
+Server env:
+- `MONGO_URI` local Mongo connection string.
+- `JWT_SECRET` for signing tokens.
+- `SMTP_*` + `APP_URL` for email verification/reset flows.
+
+## CI
+
+GitHub Actions runs lint + tests for the client and server:
+- Workflow: `.github/workflows/ci.yml`
+- Runs on push/PR to `main` or `master`.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/888f4a81-5ba3-4f1e-b495-708390e154d6) and click on Share -> Publish.

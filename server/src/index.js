@@ -1,22 +1,47 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import notesRoutes from "./routes/notes.js";
 import snippetRoutes from "./routes/snippets.js";
+import projectRoutes from "./routes/projects.js";
+import tagRoutes from "./routes/tags.js";
+import searchRoutes from "./routes/search.js";
+import activityRoutes from "./routes/activity.js";
+import analyticsRoutes from "./routes/analytics.js";
 import { seedSampleData } from "./seeds/sampleData.js";
 
 dotenv.config();
 const app = express();
+app.set("trust proxy", 1);
 
-app.use(cors());
+// Log incoming requests for debugging
+app.use((req, res, next) => {
+  console.log('[req] %s %s origin=%s', req.method, req.originalUrl, req.headers.origin);
+  next();
+});
+
+// CORS: allow the app origin and send credentials for httpOnly cookies
+const DEV_MODE = process.env.NODE_ENV !== 'production'
+const DEFAULT_DEV_ORIGIN = 'http://localhost:8080'
+const CORS_ORIGIN = process.env.CORS_ORIGIN || (DEV_MODE ? DEFAULT_DEV_ORIGIN : 'https://your-production-domain.com')
+app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
+app.options('*', cors({ origin: CORS_ORIGIN, credentials: true }));
+
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req, res) => res.send("DevBoard API running"));
 app.use("/api/auth", authRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/snippets", snippetRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/tags", tagRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/activity", activityRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 const PORT = process.env.PORT || 4000;
 

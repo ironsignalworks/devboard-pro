@@ -10,15 +10,32 @@ router.use(requireAuth);
 // GET /api/snippets
 router.get("/", async (req, res) => {
   try {
-    const { q, tag } = req.query;
+    const { q, tag, page = 1, limit = 10, projectId } = req.query;
+
+    const pageNum = Math.max(parseInt(String(page)) || 1, 1);
+    const limitNum = Math.max(parseInt(String(limit)) || 10, 1);
 
     const query = { user: req.userId };
-
     if (tag) query.tags = tag;
     if (q) query.$text = { $search: q };
+    if (projectId) {
+      const projectValue = String(projectId);
+      if (projectValue === "unassigned") {
+        query.$and = [
+          { $or: [{ projectId: null }, { projectId: { $exists: false } }] },
+        ];
+      } else {
+        query.projectId = projectValue;
+      }
+    }
 
-    const snippets = await Snippet.find(query).sort({ updatedAt: -1 });
-    res.json(snippets);
+    const total = await Snippet.countDocuments(query);
+    const snippets = await Snippet.find(query)
+      .sort({ updatedAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
+
+    res.json({ items: snippets, total, page: pageNum, limit: limitNum });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -50,10 +67,7 @@ router.post("/", async (req, res) => {
 // GET /api/snippets/:id
 router.get("/:id", async (req, res) => {
   try {
-    const snippet = await Snippet.findOne({
-      _id: req.params.id,
-      user: req.userId,
-    });
+    const snippet = await Snippet.findOne({ _id: req.params.id, user: req.userId });
     if (!snippet) return res.status(404).json({ message: "Not found" });
     res.json(snippet);
   } catch (err) {
@@ -81,10 +95,7 @@ router.put("/:id", async (req, res) => {
 // DELETE /api/snippets/:id
 router.delete("/:id", async (req, res) => {
   try {
-    const snippet = await Snippet.findOneAndDelete({
-      _id: req.params.id,
-      user: req.userId,
-    });
+    const snippet = await Snippet.findOneAndDelete({ _id: req.params.id, user: req.userId });
     if (!snippet) return res.status(404).json({ message: "Not found" });
     res.json({ message: "Deleted" });
   } catch (err) {

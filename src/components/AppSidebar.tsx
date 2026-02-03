@@ -1,4 +1,4 @@
-import { Home, Code2, FileText, FolderKanban, Tag, Settings, PlusCircle } from "lucide-react";
+import { Home, Code2, FileText, FolderKanban, Tag, PlusCircle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -11,7 +11,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -32,10 +31,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-            <Code2 className="h-5 w-5 text-primary-foreground" />
+      <SidebarHeader className={`border-b border-sidebar-border h-14 flex items-center ${isCollapsed ? "px-0 justify-center" : "px-4"}`}>
+        <div className={`flex h-full w-full items-center gap-2 ${isCollapsed ? "justify-center" : ""}`}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-transparent shrink-0">
+            <img
+              src="/logo_app.png"
+              alt="DevBoard"
+              className="h-8 w-8 object-contain"
+            />
           </div>
           {!isCollapsed && (
             <span className="text-lg font-semibold text-sidebar-foreground">DevBoard</span>
@@ -43,7 +46,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2 sm:px-0">
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -85,18 +88,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={location.pathname === "/settings"}>
-              <NavLink to="/settings" className="flex items-center gap-3">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }

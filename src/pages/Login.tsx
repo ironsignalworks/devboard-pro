@@ -6,39 +6,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { loginUser } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "@/components/ui/sonner";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("demo@devboard.local");
   const [password, setPassword] = useState("password123");
-  const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setLoading(true);
 
     try {
-      const res = await fetch(`${API}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        alert(err?.message || "Login failed");
-        return;
-      }
-
-      const data = await res.json();
-      if (data?.token) {
-        localStorage.setItem("token", data.token);
+      const data: any = await loginUser({ email, password });
+      if (data?.user) {
+        login(data.user);
+        toast.success("Welcome back!");
         navigate("/");
+      } else if (data?.requiresVerification) {
+        setError("Please verify your email before logging in.");
+        toast.error("Please verify your email before logging in.");
       } else {
-        alert("Login failed: no token returned");
+        setError(data?.message || "Login failed");
+        toast.error(data?.message || "Login failed");
       }
     } catch (err) {
       console.error(err);
-      alert("Network error");
+      setError("Network error");
+      toast.error("Network error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,6 +63,7 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -91,12 +95,17 @@ export default function Login() {
                   Remember me
                 </label>
               </div>
-              <Button variant="link" className="px-0 text-sm" type="button">
+              <Button
+                variant="link"
+                className="px-0 text-sm"
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+              >
                 Forgot password?
               </Button>
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing In..." : "Sign In"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">

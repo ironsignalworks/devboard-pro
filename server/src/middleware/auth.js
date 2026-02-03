@@ -2,11 +2,12 @@ import jwt from "jsonwebtoken";
 
 export const requireAuth = (req, res, next) => {
   const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
+  const bearerToken = header?.startsWith("Bearer ") ? header.split(" ")[1] : null;
+  const cookieToken = req.cookies?.accessToken;
+  const token = bearerToken || cookieToken;
+  if (!token) {
     return res.status(401).json({ message: "No token" });
   }
-
-  const token = header.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "changeme");

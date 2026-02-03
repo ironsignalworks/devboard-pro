@@ -77,27 +77,27 @@ export default function Settings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h4 className="font-medium">Export Data</h4>
                 <p className="text-sm text-muted-foreground">
                   Download all your snippets and notes
                 </p>
               </div>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
             </div>
             <Separator />
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h4 className="font-medium">Import Data</h4>
                 <p className="text-sm text-muted-foreground">
                   Import snippets from a JSON file
                 </p>
               </div>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Upload className="mr-2 h-4 w-4" />
                 Import
               </Button>
@@ -114,14 +114,14 @@ export default function Settings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h4 className="font-medium">Delete Account</h4>
                 <p className="text-sm text-muted-foreground">
                   Permanently delete your account and all data
                 </p>
               </div>
-              <Button variant="destructive">
+              <Button variant="destructive" className="w-full sm:w-auto">
                 Delete Account
               </Button>
             </div>
