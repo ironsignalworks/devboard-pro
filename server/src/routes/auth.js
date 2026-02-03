@@ -52,6 +52,7 @@ const cookieOptions = {
   httpOnly: true,
   sameSite: isProd ? "none" : "lax",
   secure: isProd,
+  partitioned: isProd,
 };
 
 const issueAccessToken = (userId) =>
@@ -162,9 +163,9 @@ router.post("/register", authLimiter, async (req, res) => {
       });
     }
 
-    if (!isProd) {
+    if (!isProd || !sent) {
       return res.status(201).json({
-        message: "Verification link generated (dev mode).",
+        message: "Verification link generated (email delivery failed).",
         requiresVerification: true,
         verifyUrl,
       });
@@ -238,7 +239,7 @@ router.post("/resend-verification", authLimiter, async (req, res) => {
     const sent = await sendVerifyEmail(user.email, verifyUrl);
 
     if (sent) return res.json({ message: "Verification email sent." });
-    if (!isProd) return res.json({ message: "Verification link generated (dev mode).", verifyUrl });
+    if (!isProd || !sent) return res.json({ message: "Verification link generated (email delivery failed).", verifyUrl });
     return res.json({ message: "Verification email queued." });
   } catch (err) {
     console.error("Auth resend verification error:", err.stack || err);
@@ -300,8 +301,8 @@ router.post("/forgot", resetLimiter, async (req, res) => {
       const sent = await sendResetEmail(user.email, resetUrl);
       if (sent) return res.json({ message: "Reset email sent." });
 
-      if (!isProd) {
-        return res.json({ message: "Reset link generated (dev mode).", resetUrl });
+      if (!isProd || !sent) {
+        return res.json({ message: "Reset link generated (email delivery failed).", resetUrl });
       }
     }
 
