@@ -24,11 +24,37 @@ app.use((req, res, next) => {
 });
 
 // CORS: allow the app origin and send credentials for httpOnly cookies
-const DEV_MODE = process.env.NODE_ENV !== 'production'
-const DEFAULT_DEV_ORIGIN = 'http://localhost:8080'
-const CORS_ORIGIN = process.env.CORS_ORIGIN || (DEV_MODE ? DEFAULT_DEV_ORIGIN : 'https://your-production-domain.com')
-app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
-app.options('*', cors({ origin: CORS_ORIGIN, credentials: true }));
+const DEV_MODE = process.env.NODE_ENV !== "production";
+const DEFAULT_DEV_ORIGIN = "http://localhost:8080";
+const rawOrigins =
+  process.env.CORS_ORIGIN ||
+  (DEV_MODE ? DEFAULT_DEV_ORIGIN : "https://your-production-domain.com");
+const allowedOrigins = rawOrigins
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+app.options(
+  "*",
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(cookieParser());
