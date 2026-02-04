@@ -10,13 +10,13 @@
       (function () {
         var segmentCount = 1;
         var l = window.location;
-        var origin = l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "");
-        var path = l.pathname.split("/").slice(1);
-        var base = path.slice(0, segmentCount + 1).join("/");
-        var rest = path.slice(segmentCount + 1).join("/");
-        var search = l.search ? l.search.replace(/&/g, "~and~") : "";
-        var newUrl = origin + "/" + base + "/?/" + rest + search + l.hash;
-        l.replace(newUrl);
+        l.replace(
+          l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "") +
+            l.pathname.split("/").slice(0, 1 + segmentCount).join("/") + "/?/" +
+            l.pathname.slice(1).split("/").slice(segmentCount).join("/").replace(/&/g, "~and~") +
+            (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+            l.hash
+        );
       })();
     </script>
   </body>
