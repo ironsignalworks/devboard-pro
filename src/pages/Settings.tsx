@@ -7,8 +7,11 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Settings() {
+  const { user } = useAuth();
+  const isDemoUser = String(user?.email || "").toLowerCase() === "demo@devboard.local";
   const [quickActions, setQuickActions] = useState<string[]>(["note", "project"]);
 
   useEffect(() => {
@@ -181,10 +184,15 @@ export default function Settings() {
                   Permanently delete your account and all data
                 </p>
               </div>
-              <Button variant="destructive" className="w-full sm:w-auto">
+              <Button variant="destructive" className="w-full sm:w-auto" disabled={isDemoUser}>
                 Delete Account
               </Button>
             </div>
+            {isDemoUser && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Demo account deletion is disabled for safety.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
