@@ -10,7 +10,10 @@ import { requireAuth } from "../middleware/auth.js";
 const router = express.Router();
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 const appUrl = process.env.APP_URL || "http://localhost:8080";
-const isProd = process.env.NODE_ENV === "production";
+const isProd =
+  process.env.NODE_ENV === "production" ||
+  process.env.RENDER === "true" ||
+  process.env.RENDER === "1";
 
 const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || "15m";
 const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
