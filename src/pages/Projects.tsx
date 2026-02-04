@@ -66,6 +66,9 @@ export default function Projects(){
       setTagFilter(tagParam)
       load(1, tagParam)
     }
+    if (searchParams.get("create") === "1") {
+      setCreateOpen(true)
+    }
   }, [searchParams])
 
   useEffect(() => {
@@ -95,7 +98,8 @@ export default function Projects(){
   const handleCreate = async ()=>{
     if (!title) return
     try {
-      await createProject({ title, description, status, tags: parseTags(tags) })
+      const res: any = await createProject({ title, description, status, tags: parseTags(tags) })
+      if (res?.__error) throw new Error(res?.message || "Failed to create project")
       setTitle('')
       setDescription('')
       setStatus('active')

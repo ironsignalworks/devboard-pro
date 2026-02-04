@@ -108,6 +108,9 @@ export default function Snippets() {
       setTag(tagParam);
       load(tagParam);
     }
+    if (searchParams.get("create") === "1") {
+      setCreateOpen(true);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -196,7 +199,7 @@ export default function Snippets() {
     e.preventDefault();
     if (!title.trim()) return;
     try {
-      await createSnippet({
+      const res: any = await createSnippet({
         title: title.trim(),
         description,
         code: code || "",
@@ -204,12 +207,14 @@ export default function Snippets() {
         tags: parseTags(tags),
         projectId: projectId === "unassigned" ? null : projectId,
       });
+      if (res?.__error) throw new Error(res?.message || "Failed to create snippet");
       setTitle("");
       setDescription("");
       setLanguage("");
       setTags("");
       setCode("");
       setProjectId("unassigned");
+      setCreateOpen(false);
       toast.success("Snippet created");
       load();
     } catch (err) {

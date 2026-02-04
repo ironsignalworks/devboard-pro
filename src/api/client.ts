@@ -22,7 +22,14 @@ export const call = async (path: string, opts: RequestInit = {}, allowRetry = tr
         return call(path, opts, false)
       }
     }
-    return parseResponse(res)
+    const payload: any = await parseResponse(res)
+    if (!res.ok) {
+      if (payload && typeof payload === 'object') {
+        return { __error: true, status: res.status, ...payload }
+      }
+      return { __error: true, status: res.status, message: String(payload || `Request failed (${res.status})`) }
+    }
+    return payload
   } catch (err: any) {
     console.error('[api] network error', err && err.message ? err.message : err)
     return { __error: true, message: err?.message || 'Network error' }

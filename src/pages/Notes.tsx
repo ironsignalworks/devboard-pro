@@ -74,6 +74,9 @@ export default function Notes() {
       setTagFilter(tagParam)
       load(1, tagParam)
     }
+    if (searchParams.get("create") === "1") {
+      setCreateOpen(true)
+    }
   }, [searchParams])
 
   useEffect(() => {
@@ -102,16 +105,18 @@ export default function Notes() {
     e.preventDefault()
     if (!title.trim()) return
     try {
-      await createNote({
+      const res: any = await createNote({
         title: title.trim(),
         content,
         tags: parseTags(tags),
         projectId: projectId === "unassigned" ? null : projectId,
       })
+      if (res?.__error) throw new Error(res?.message || "Failed to create note")
       setTitle('')
       setContent('')
       setTags('')
       setProjectId('unassigned')
+      setCreateOpen(false)
       toast.success("Note created")
       load(1)
     } catch (err) {

@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from "@tiptap/react";
+ï»¿import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useEffect } from "react";
@@ -69,7 +69,7 @@ export default function RichTextEditor({
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         />
         <ToolbarButton
-          label="• List"
+          label="* List"
           active={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         />
@@ -83,3 +83,4 @@ export default function RichTextEditor({
     </div>
   );
 }
+

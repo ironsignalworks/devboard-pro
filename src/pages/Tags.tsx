@@ -62,9 +62,9 @@ export default function Tags() {
     const name = newTag.trim();
     try {
       const res: any = await createTag({ name, color: colorClassForTag(name) });
-      if (res?.message && !res?.name) {
-        setError(res.message);
-        toast.error(res.message);
+      if (res?.__error || (res?.message && !res?.name)) {
+        setError(res?.message || "Failed to create tag");
+        toast.error(res?.message || "Failed to create tag");
         return;
       }
       setNewTag("");
@@ -80,7 +80,8 @@ export default function Tags() {
     const next = prompt("Rename tag", name);
     if (!next || next === name) return;
     try {
-      await renameTag(name, next.trim());
+      const res: any = await renameTag(name, next.trim());
+      if (res?.__error) throw new Error(res?.message || "Failed to rename tag");
       toast.success("Tag renamed");
       load();
     } catch (err) {
@@ -92,7 +93,8 @@ export default function Tags() {
   const handleDelete = async () => {
     if (!deletePendingTag) return;
     try {
-      await deleteTag(deletePendingTag);
+      const res: any = await deleteTag(deletePendingTag);
+      if (res?.__error) throw new Error(res?.message || "Failed to delete tag");
       toast.success("Tag deleted");
       setDeletePendingTag(null);
       load();

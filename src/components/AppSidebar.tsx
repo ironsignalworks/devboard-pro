@@ -1,6 +1,6 @@
 import { Home, Code2, FileText, FolderKanban, Tag, PlusCircle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useEffect, useMemo, useState } from "react";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -27,7 +28,38 @@ const mainNavItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const isCollapsed = state === "collapsed";
+  const [quickActions, setQuickActions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("quickActions");
+    if (!raw) {
+      setQuickActions(["note", "project"]);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setQuickActions(parsed.map((item) => String(item)));
+      } else {
+        setQuickActions(["note", "project"]);
+      }
+    } catch {
+      setQuickActions(["note", "project"]);
+    }
+  }, [location.pathname]);
+
+  const quickActionItems = useMemo(
+    () =>
+      [
+        { key: "snippet", label: "New Snippet", path: "/snippets?create=1" },
+        { key: "note", label: "New Note", path: "/notes?create=1" },
+        { key: "project", label: "New Project", path: "/projects?create=1" },
+        { key: "tag", label: "New Tag", path: "/tags" },
+      ].filter((item) => quickActions.includes(item.key)),
+    [quickActions]
+  );
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -75,15 +107,33 @@ export function AppSidebar() {
 
         <SidebarGroup>
           <SidebarGroupLabel>Quick Actions</SidebarGroupLabel>
-          <SidebarGroupContent className="px-2">
-            <Button 
-              variant="ghost" 
-              size={isCollapsed ? "icon" : "sm"}
-              className="w-full justify-start gap-2"
-            >
-              <PlusCircle className="h-4 w-4" />
-              {!isCollapsed && <span>New Snippet</span>}
-            </Button>
+          <SidebarGroupContent className="px-2 space-y-1">
+            {quickActionItems.length === 0 ? (
+              <Button
+                variant="ghost"
+                size={isCollapsed ? "icon" : "sm"}
+                className="w-full justify-start gap-2"
+                onClick={() => navigate("/settings")}
+                title="Configure quick actions"
+              >
+                <PlusCircle className="h-4 w-4" />
+                {!isCollapsed && <span>Configure</span>}
+              </Button>
+            ) : (
+              quickActionItems.map((item) => (
+                <Button
+                  key={item.key}
+                  variant="ghost"
+                  size={isCollapsed ? "icon" : "sm"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => navigate(item.path)}
+                  title={item.label}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  {!isCollapsed && <span>{item.label}</span>}
+                </Button>
+              ))
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

@@ -202,10 +202,10 @@ export default function Dashboard() {
   }, [snippetItems, noteItems]);
 
   const stats = [
-    { title: "Total Snippets", value: String(snippetsTotal), icon: Code2 },
-    { title: "Total Projects", value: String(projectsTotal), icon: FolderKanban },
-    { title: "Total Notes", value: String(notesTotal), icon: FileText },
-    { title: "Total Tags", value: String(totalTagCount), icon: Tag },
+    { title: "Total Snippets", value: String(snippetsTotal), icon: Code2, path: "/snippets" },
+    { title: "Total Projects", value: String(projectsTotal), icon: FolderKanban, path: "/projects" },
+    { title: "Total Notes", value: String(notesTotal), icon: FileText, path: "/notes" },
+    { title: "Total Tags", value: String(totalTagCount), icon: Tag, path: "/tags" },
   ];
 
   const productivitySummary = useMemo(() => {
@@ -248,15 +248,15 @@ export default function Dashboard() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <Button className="w-full sm:w-auto" onClick={() => navigate("/snippets")}>
+        <Button className="w-full sm:w-auto" onClick={() => navigate("/snippets?create=1")}>
           <Plus className="mr-2 h-4 w-4" />
           New Snippet
         </Button>
-        <Button className="w-full sm:w-auto" variant="secondary" onClick={() => navigate("/notes")}>
+        <Button className="w-full sm:w-auto" variant="secondary" onClick={() => navigate("/notes?create=1")}>
           <Plus className="mr-2 h-4 w-4" />
           New Note
         </Button>
-        <Button className="w-full sm:w-auto" variant="secondary" onClick={() => navigate("/projects")}>
+        <Button className="w-full sm:w-auto" variant="secondary" onClick={() => navigate("/projects?create=1")}>
           <Plus className="mr-2 h-4 w-4" />
           New Project
         </Button>
@@ -264,7 +264,11 @@ export default function Dashboard() {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card
+            key={stat.title}
+            className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20"
+            onClick={() => navigate(stat.path)}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
               <stat.icon className="h-4 w-4 text-muted-foreground" />

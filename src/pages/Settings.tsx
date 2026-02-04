@@ -4,8 +4,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useEffect, useState } from "react";
+import { toast } from "@/components/ui/sonner";
 
 export default function Settings() {
+  const [quickActions, setQuickActions] = useState<string[]>(["note", "project"]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("quickActions");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setQuickActions(parsed.map((item) => String(item)));
+      }
+    } catch {
+      // ignore bad local data
+    }
+  }, []);
+
+  const toggleQuickAction = (key: string, checked: boolean) => {
+    setQuickActions((prev) => {
+      if (checked) {
+        if (prev.includes(key)) return prev;
+        return [...prev, key];
+      }
+      return prev.filter((item) => item !== key);
+    });
+  };
+
+  const saveQuickActions = () => {
+    localStorage.setItem("quickActions", JSON.stringify(quickActions));
+    toast.success("Quick actions updated");
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -37,6 +70,33 @@ export default function Settings() {
               <Input id="email" type="email" defaultValue="john@example.com" />
             </div>
             <Button>Save Changes</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>
+              Choose what appears in the sidebar quick actions section.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              { key: "snippet", label: "New Snippet" },
+              { key: "note", label: "New Note" },
+              { key: "project", label: "New Project" },
+              { key: "tag", label: "New Tag" },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`quick-${item.key}`}
+                  checked={quickActions.includes(item.key)}
+                  onCheckedChange={(checked) => toggleQuickAction(item.key, checked === true)}
+                />
+                <Label htmlFor={`quick-${item.key}`}>{item.label}</Label>
+              </div>
+            ))}
+            <Button onClick={saveQuickActions}>Save quick actions</Button>
           </CardContent>
         </Card>
 
