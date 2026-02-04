@@ -24,6 +24,7 @@ const hasSmtp =
   process.env.SMTP_PORT &&
   process.env.SMTP_USER &&
   process.env.SMTP_PASS;
+const hasResend = process.env.RESEND_API_KEY && process.env.EMAIL_FROM;
 
 const smtpTransport = hasSmtp
   ? nodemailer.createTransport({
@@ -36,6 +37,36 @@ const smtpTransport = hasSmtp
       },
     })
   : null;
+
+const sendViaResend = async ({ to, subject, html, text }) => {
+  if (!hasResend) return false;
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM,
+        to,
+        subject,
+        html,
+        text,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("Resend API error:", response.status, body);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Resend request error:", err?.message || err);
+    return false;
+  }
+};
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -83,15 +114,20 @@ const clearAuthCookies = (res) => {
 };
 
 const sendResetEmail = async (to, resetUrl) => {
+  const subject = "Reset your DevBoard Pro password";
+  const text = `Reset your password: ${resetUrl}`;
+  const html = `<p>Reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`;
+  const sentWithResend = await sendViaResend({ to, subject, text, html });
+  if (sentWithResend) return true;
   if (!smtpTransport) return false;
   const from = process.env.SMTP_FROM || "no-reply@devboard.local";
   try {
     await smtpTransport.sendMail({
       from,
       to,
-      subject: "Reset your DevBoard Pro password",
-      text: `Reset your password: ${resetUrl}`,
-      html: `<p>Reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+      subject,
+      text,
+      html,
     });
     return true;
   } catch (err) {
@@ -101,15 +137,20 @@ const sendResetEmail = async (to, resetUrl) => {
 };
 
 const sendVerifyEmail = async (to, verifyUrl) => {
+  const subject = "Verify your DevBoard Pro email";
+  const text = `Verify your email: ${verifyUrl}`;
+  const html = `<p>Verify your email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`;
+  const sentWithResend = await sendViaResend({ to, subject, text, html });
+  if (sentWithResend) return true;
   if (!smtpTransport) return false;
   const from = process.env.SMTP_FROM || "no-reply@devboard.local";
   try {
     await smtpTransport.sendMail({
       from,
       to,
-      subject: "Verify your DevBoard Pro email",
-      text: `Verify your email: ${verifyUrl}`,
-      html: `<p>Verify your email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+      subject,
+      text,
+      html,
     });
     return true;
   } catch (err) {
