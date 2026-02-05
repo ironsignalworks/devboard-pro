@@ -6,6 +6,9 @@ export const registerUser = (data: { name: string; email: string; password: stri
 export const loginUser = (data: { email: string; password: string }) =>
   call("/api/auth/login", { method: "POST", body: JSON.stringify(data) });
 
+export const guestLogin = () =>
+  call("/api/auth/guest", { method: "POST" });
+
 export const requestPasswordReset = (email: string) =>
   call("/api/auth/forgot", { method: "POST", body: JSON.stringify({ email }) });
 

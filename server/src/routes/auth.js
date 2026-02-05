@@ -5,7 +5,12 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import rateLimit from "express-rate-limit";
 import User from "../models/User.js";
+import Note from "../models/Note.js";
+import Project from "../models/Project.js";
+import Snippet from "../models/Snippet.js";
+import Tag from "../models/Tag.js";
 import { requireAuth } from "../middleware/auth.js";
+import { seedSampleDataForUser } from "../seeds/sampleData.js";
 
 const router = express.Router();
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
@@ -18,6 +23,8 @@ const isProd =
 const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || "15m";
 const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
 const VERIFY_TOKEN_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+const GUEST_TTL_HOURS = Number(process.env.GUEST_TTL_HOURS || 24);
+const GUEST_TTL_MS = Math.max(GUEST_TTL_HOURS, 1) * 60 * 60 * 1000;
 
 const hasSmtp =
   process.env.SMTP_HOST &&
@@ -111,6 +118,27 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
 const clearAuthCookies = (res) => {
   res.clearCookie("accessToken", cookieOptions);
   res.clearCookie("refreshToken", cookieOptions);
+};
+
+const pruneExpiredGuests = async () => {
+  try {
+    const now = new Date();
+    const expiredGuests = await User.find({
+      isGuest: true,
+      guestExpiresAt: { $lt: now },
+    }).select("_id");
+    if (!expiredGuests.length) return;
+    const ids = expiredGuests.map((u) => u._id);
+    await Promise.all([
+      Note.deleteMany({ user: { $in: ids } }),
+      Project.deleteMany({ user: { $in: ids } }),
+      Snippet.deleteMany({ user: { $in: ids } }),
+      Tag.deleteMany({ user: { $in: ids } }),
+      User.deleteMany({ _id: { $in: ids } }),
+    ]);
+  } catch (err) {
+    console.error("Guest cleanup error:", err?.message || err);
+  }
 };
 
 const sendResetEmail = async (to, resetUrl) => {
@@ -260,6 +288,49 @@ router.post("/login", authLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error("Auth login error:", err.stack || err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// POST /api/auth/guest - create a short-lived guest account
+router.post("/guest", authLimiter, async (req, res) => {
+  try {
+    await pruneExpiredGuests();
+
+    const randomId = crypto.randomBytes(8).toString("hex");
+    const guestEmail = `guest-${randomId}@guest.devboard.local`;
+    const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
+
+    const user = await User.create({
+      email: guestEmail,
+      name: "Guest",
+      passwordHash,
+      isEmailVerified: true,
+      isGuest: true,
+      guestExpiresAt: new Date(Date.now() + GUEST_TTL_MS),
+    });
+
+    await seedSampleDataForUser(user._id);
+
+    const accessToken = issueAccessToken(user._id);
+    const refreshToken = createToken();
+    user.refreshTokenHash = hashToken(refreshToken);
+    user.refreshTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24 * REFRESH_TOKEN_DAYS);
+    await user.save();
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    res.json({
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        isGuest: true,
+        guestExpiresAt: user.guestExpiresAt,
+      },
+    });
+  } catch (err) {
+    console.error("Auth guest error:", err.stack || err);
     res.status(500).json({ message: "Server error" });
   }
 });

@@ -73,8 +73,13 @@ const PORT = process.env.PORT || 4000;
 
 connectDB()
   .then(async () => {
-    const seedResult = await seedSampleData();
-    console.log("Seed result:", seedResult);
+    const shouldSeed = String(process.env.SEED_DEMO_USER || "").toLowerCase() === "true";
+    if (shouldSeed) {
+      const seedResult = await seedSampleData();
+      console.log("Seed result:", seedResult);
+    } else {
+      console.log("Seed skipped (set SEED_DEMO_USER=true to enable).");
+    }
     app.listen(PORT, () => console.log(`Server on port ${PORT}`));
   })
   .catch((err) => {

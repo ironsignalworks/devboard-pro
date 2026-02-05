@@ -5,17 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { loginUser } from "../api/auth";
+import { guestLogin, loginUser } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "@/components/ui/sonner";
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState("demo@devboard.local");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
+  const busy = loading || guestLoading;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +43,28 @@ export default function Login() {
       toast.error("Network error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGuest = async () => {
+    setError(null);
+    setGuestLoading(true);
+    try {
+      const data: any = await guestLogin();
+      if (data?.user) {
+        login(data.user);
+        toast.success("Welcome to the demo!");
+        navigate("/");
+      } else {
+        setError(data?.message || "Demo login failed");
+        toast.error(data?.message || "Demo login failed");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Network error");
+      toast.error("Network error");
+    } finally {
+      setGuestLoading(false);
     }
   };
 
@@ -109,8 +133,17 @@ export default function Login() {
                 Forgot password?
               </Button>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={busy}>
               {loading ? "Signing In..." : "Sign In"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={handleGuest}
+              disabled={busy}
+            >
+              {guestLoading ? "Launching Demo..." : "Try Demo (No Account)"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">

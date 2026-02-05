@@ -11,7 +11,9 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function Settings() {
   const { user } = useAuth();
-  const isDemoUser = String(user?.email || "").toLowerCase() === "demo@devboard.local";
+  const isDemoUser =
+    Boolean(user?.isGuest) ||
+    String(user?.email || "").toLowerCase() === "demo@devboard.local";
   const [quickActions, setQuickActions] = useState<string[]>(["note", "project"]);
 
   useEffect(() => {

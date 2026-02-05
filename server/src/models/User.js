@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     isEmailVerified: { type: Boolean, default: false },
+    isGuest: { type: Boolean, default: false },
+    guestExpiresAt: { type: Date },
     verifyTokenHash: { type: String },
     verifyTokenExpires: { type: Date },
     resetTokenHash: { type: String },
