@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../config/security.js";
 
 export const requireAuth = (req, res, next) => {
   const header = req.headers.authorization;
@@ -10,7 +11,7 @@ export const requireAuth = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "changeme");
+    const decoded = jwt.verify(token, getJwtSecret());
     req.userId = decoded.userId;
     next();
   } catch (e) {

@@ -12,16 +12,25 @@ import searchRoutes from "./routes/search.js";
 import activityRoutes from "./routes/activity.js";
 import analyticsRoutes from "./routes/analytics.js";
 import { seedSampleData } from "./seeds/sampleData.js";
+import { assertSecurityConfig } from "./config/security.js";
+import { logError, logInfo } from "./config/logger.js";
+import mongoose from "mongoose";
 
 dotenv.config();
 const app = express();
 app.set("trust proxy", 1);
 
-// Log incoming requests for debugging
-app.use((req, res, next) => {
-  console.log('[req] %s %s origin=%s', req.method, req.originalUrl, req.headers.origin);
-  next();
-});
+// Log incoming requests in development only to reduce production noise.
+if (process.env.NODE_ENV !== "production") {
+  app.use((req, _res, next) => {
+    logInfo("request", {
+      method: req.method,
+      path: req.originalUrl,
+      origin: req.headers.origin || "",
+    });
+    next();
+  });
+}
 
 // CORS: allow the app origin and send credentials for httpOnly cookies
 const DEV_MODE = process.env.NODE_ENV !== "production";
@@ -59,7 +68,27 @@ app.options(
 app.use(express.json());
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+  const method = String(req.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return next();
+
+  const hasAuthCookie = Boolean(req.cookies?.accessToken);
+  if (!hasAuthCookie) return next();
+
+  const tokenCookie = req.cookies?.csrfToken;
+  const tokenHeader = req.headers["x-csrf-token"];
+  if (!tokenCookie || !tokenHeader || tokenCookie !== tokenHeader) {
+    return res.status(403).json({ message: "Invalid CSRF token" });
+  }
+  return next();
+});
+
 app.get("/", (req, res) => res.send("DevBoard Pro API running"));
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/ready", (_req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({ status: ready ? "ready" : "not_ready" });
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/snippets", snippetRoutes);
@@ -73,16 +102,17 @@ const PORT = process.env.PORT || 4000;
 
 connectDB()
   .then(async () => {
+    assertSecurityConfig();
     const shouldSeed = String(process.env.SEED_DEMO_USER || "").toLowerCase() === "true";
     if (shouldSeed) {
       const seedResult = await seedSampleData();
-      console.log("Seed result:", seedResult);
+      logInfo("Seed completed", { seedResult });
     } else {
-      console.log("Seed skipped (set SEED_DEMO_USER=true to enable).");
+      logInfo("Seed skipped");
     }
-    app.listen(PORT, () => console.log(`Server on port ${PORT}`));
+    app.listen(PORT, () => logInfo("Server started", { port: PORT }));
   })
   .catch((err) => {
-    console.error("Failed to start server, DB connection error:", err.message || err);
+    logError("Failed to start server", err);
     process.exit(1);
   });

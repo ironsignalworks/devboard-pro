@@ -1,5 +1,5 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }){
@@ -8,7 +8,18 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   if (authError) {
     return (
       <div className="p-6 text-red-600">
-        Authentication error: {authError}. Please <a href="#" onClick={() => { clearAuthError(); localStorage.removeItem('user'); window.location.href = '/login' }}>login</a> again.
+        Authentication error: {authError}. Please{" "}
+        <Link
+          to="/login"
+          onClick={() => {
+            clearAuthError()
+            localStorage.removeItem('user')
+          }}
+          className="underline"
+        >
+          login
+        </Link>{" "}
+        again.
       </div>
     )
   }

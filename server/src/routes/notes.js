@@ -1,8 +1,11 @@
 import express from "express";
 import Note from "../models/Note.js";
 import { requireAuth } from "../middleware/auth.js";
+import { escapeRegex } from "../config/security.js";
 
 const router = express.Router();
+const MAX_LIMIT = 100;
+const MAX_QUERY_LENGTH = 120;
 
 // All routes below require auth
 router.use(requireAuth);
@@ -12,7 +15,7 @@ router.get("/", async (req, res) => {
   try {
     const { page = 1, limit = 20, q, tag, projectId } = req.query;
     const pageNum = Math.max(parseInt(String(page)) || 1, 1);
-    const limitNum = Math.max(parseInt(String(limit)) || 20, 1);
+    const limitNum = Math.min(Math.max(parseInt(String(limit)) || 20, 1), MAX_LIMIT);
 
     const query = { user: req.userId };
     if (tag) query.tags = String(tag);
@@ -28,11 +31,12 @@ router.get("/", async (req, res) => {
       }
     }
     if (q) {
-      const term = String(q).trim();
+      const term = String(q).trim().slice(0, MAX_QUERY_LENGTH);
       if (term) {
+        const safeTerm = escapeRegex(term);
         const textQuery = [
-          { title: { $regex: term, $options: "i" } },
-          { content: { $regex: term, $options: "i" } },
+          { title: { $regex: safeTerm, $options: "i" } },
+          { content: { $regex: safeTerm, $options: "i" } },
         ];
         if (query.$or) {
           query.$and = [{ $or: query.$or }, { $or: textQuery }];

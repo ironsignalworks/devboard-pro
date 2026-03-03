@@ -11,9 +11,11 @@ import Snippet from "../models/Snippet.js";
 import Tag from "../models/Tag.js";
 import { requireAuth } from "../middleware/auth.js";
 import { seedSampleDataForUser } from "../seeds/sampleData.js";
+import { getJwtSecret } from "../config/security.js";
 
 const router = express.Router();
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
+const normalize = (value) => String(value || "").trim();
 const appUrl = process.env.APP_URL || "http://localhost:8080";
 const isProd =
   process.env.NODE_ENV === "production" ||
@@ -97,7 +99,7 @@ const cookieOptions = {
 };
 
 const issueAccessToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET || "changeme", {
+  jwt.sign({ userId }, getJwtSecret(), {
     expiresIn: ACCESS_TOKEN_TTL,
   });
 
@@ -105,6 +107,7 @@ const createToken = () => crypto.randomBytes(32).toString("hex");
 const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
+  const csrfToken = createToken();
   res.cookie("accessToken", accessToken, {
     ...cookieOptions,
     maxAge: 1000 * 60 * 15,
@@ -113,11 +116,22 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
     ...cookieOptions,
     maxAge: 1000 * 60 * 60 * 24 * REFRESH_TOKEN_DAYS,
   });
+  res.cookie("csrfToken", csrfToken, {
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
+    partitioned: isProd,
+    maxAge: 1000 * 60 * 60 * 24 * REFRESH_TOKEN_DAYS,
+  });
 };
 
 const clearAuthCookies = (res) => {
   res.clearCookie("accessToken", cookieOptions);
   res.clearCookie("refreshToken", cookieOptions);
+  res.clearCookie("csrfToken", {
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
+    partitioned: isProd,
+  });
 };
 
 const pruneExpiredGuests = async () => {
@@ -235,7 +249,7 @@ router.post("/register", authLimiter, async (req, res) => {
       });
     }
 
-    if (!isProd || !sent) {
+    if (!isProd) {
       return res.status(201).json({
         message: "Verification link generated (email delivery failed).",
         requiresVerification: true,
@@ -354,7 +368,7 @@ router.post("/resend-verification", authLimiter, async (req, res) => {
     const sent = await sendVerifyEmail(user.email, verifyUrl);
 
     if (sent) return res.json({ message: "Verification email sent." });
-    if (!isProd || !sent) return res.json({ message: "Verification link generated (email delivery failed).", verifyUrl });
+    if (!isProd) return res.json({ message: "Verification link generated (email delivery failed).", verifyUrl });
     return res.json({ message: "Verification email queued." });
   } catch (err) {
     console.error("Auth resend verification error:", err.stack || err);
@@ -416,7 +430,7 @@ router.post("/forgot", resetLimiter, async (req, res) => {
       const sent = await sendResetEmail(user.email, resetUrl);
       if (sent) return res.json({ message: "Reset email sent." });
 
-      if (!isProd || !sent) {
+      if (!isProd) {
         return res.json({ message: "Reset link generated (email delivery failed).", resetUrl });
       }
     }
@@ -522,6 +536,177 @@ router.get("/me", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Auth /me error:", err.stack || err);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/profile", requireAuth, async (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim();
+    const email = normalizeEmail(req.body?.email || "");
+    if (name.length < 2) return res.status(400).json({ message: "Name too short" });
+    if (!isValidEmail(email)) return res.status(400).json({ message: "Invalid email" });
+
+    const existing = await User.findOne({ email, _id: { $ne: req.userId } });
+    if (existing) return res.status(409).json({ message: "Email already in use" });
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.name = name;
+    user.email = email;
+    await user.save();
+
+    return res.json({
+      message: "Profile updated",
+      user: { id: user._id, email: user.email, name: user.name, isGuest: !!user.isGuest },
+    });
+  } catch (err) {
+    console.error("Auth profile update error:", err.stack || err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/password", requireAuth, async (req, res) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || "");
+    const newPassword = String(req.body?.newPassword || "");
+    if (!currentPassword || !newPassword) return res.status(400).json({ message: "Missing fields" });
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: "Password must be at least 8 characters and include a number." });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const hashed = user.passwordHash ?? user.password;
+    const matches = await bcrypt.compare(currentPassword, hashed || "");
+    if (!matches) return res.status(400).json({ message: "Current password is incorrect" });
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    return res.json({ message: "Password updated" });
+  } catch (err) {
+    console.error("Auth password update error:", err.stack || err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/export", requireAuth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const [snippets, notes, projects, tags] = await Promise.all([
+      Snippet.find({ user: userId }).lean(),
+      Note.find({ user: userId }).lean(),
+      Project.find({ user: userId }).lean(),
+      Tag.find({ user: userId }).lean(),
+    ]);
+
+    return res.json({
+      exportedAt: new Date().toISOString(),
+      snippets,
+      notes,
+      projects,
+      tags,
+    });
+  } catch (err) {
+    console.error("Auth export error:", err.stack || err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/import", requireAuth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const incoming = req.body || {};
+    const snippets = Array.isArray(incoming.snippets) ? incoming.snippets : [];
+    const notes = Array.isArray(incoming.notes) ? incoming.notes : [];
+    const projects = Array.isArray(incoming.projects) ? incoming.projects : [];
+    const tags = Array.isArray(incoming.tags) ? incoming.tags : [];
+
+    const cleanedProjects = projects.map((item) => ({
+      user: userId,
+      title: String(item?.title || "Imported project").trim(),
+      description: String(item?.description || ""),
+      status: ["active", "completed", "archived"].includes(String(item?.status || "active"))
+        ? String(item.status)
+        : "active",
+      tags: Array.isArray(item?.tags) ? item.tags.filter(Boolean).map((tag) => String(tag)) : [],
+      preferredLanguage: item?.preferredLanguage ? String(item.preferredLanguage) : undefined,
+    }));
+
+    const cleanedSnippets = snippets.map((item) => ({
+      user: userId,
+      title: String(item?.title || "Imported snippet").trim(),
+      description: String(item?.description || ""),
+      code: String(item?.code || ""),
+      language: item?.language ? String(item.language) : undefined,
+      tags: Array.isArray(item?.tags) ? item.tags.filter(Boolean).map((tag) => String(tag)) : [],
+      projectId: null,
+    }));
+
+    const cleanedNotes = notes.map((item) => ({
+      user: userId,
+      title: String(item?.title || "Imported note").trim(),
+      content: String(item?.content || ""),
+      tags: Array.isArray(item?.tags) ? item.tags.filter(Boolean).map((tag) => String(tag)) : [],
+      projectId: null,
+    }));
+
+    const cleanedTags = tags
+      .map((item) => ({
+        user: userId,
+        name: normalize(String(item?.name || "")),
+        color: item?.color ? String(item.color) : undefined,
+      }))
+      .filter((item) => item.name);
+
+    await Promise.all([
+      cleanedProjects.length ? Project.insertMany(cleanedProjects) : Promise.resolve(),
+      cleanedSnippets.length ? Snippet.insertMany(cleanedSnippets) : Promise.resolve(),
+      cleanedNotes.length ? Note.insertMany(cleanedNotes) : Promise.resolve(),
+      cleanedTags.length
+        ? Tag.insertMany(cleanedTags, { ordered: false }).catch(() => null)
+        : Promise.resolve(),
+    ]);
+
+    return res.json({
+      message: "Import completed",
+      imported: {
+        projects: cleanedProjects.length,
+        snippets: cleanedSnippets.length,
+        notes: cleanedNotes.length,
+        tags: cleanedTags.length,
+      },
+    });
+  } catch (err) {
+    console.error("Auth import error:", err.stack || err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.delete("/account", requireAuth, async (req, res) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || "");
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user.isGuest) {
+      if (!currentPassword) return res.status(400).json({ message: "Current password is required" });
+      const hashed = user.passwordHash ?? user.password;
+      const matches = await bcrypt.compare(currentPassword, hashed || "");
+      if (!matches) return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    await Promise.all([
+      Note.deleteMany({ user: user._id }),
+      Project.deleteMany({ user: user._id }),
+      Snippet.deleteMany({ user: user._id }),
+      Tag.deleteMany({ user: user._id }),
+      User.deleteOne({ _id: user._id }),
+    ]);
+    clearAuthCookies(res);
+    return res.json({ message: "Account deleted" });
+  } catch (err) {
+    console.error("Auth account delete error:", err.stack || err);
+    return res.status(500).json({ message: "Server error" });
   }
 });
 

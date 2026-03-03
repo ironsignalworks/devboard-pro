@@ -3,20 +3,22 @@ import Snippet from "../models/Snippet.js";
 import Note from "../models/Note.js";
 import Project from "../models/Project.js";
 import { requireAuth } from "../middleware/auth.js";
+import { escapeRegex } from "../config/security.js";
 
 const router = express.Router();
+const MAX_QUERY_LENGTH = 120;
 
 router.use(requireAuth);
 
 // GET /api/search?q=term&type=all|snippets|notes|projects
 router.get("/", async (req, res) => {
   try {
-    const q = String(req.query.q || "").trim();
+    const q = String(req.query.q || "").trim().slice(0, MAX_QUERY_LENGTH);
     const type = String(req.query.type || "all");
     if (!q) return res.json({ items: [] });
 
     const user = req.userId;
-    const regex = { $regex: q, $options: "i" };
+    const regex = { $regex: escapeRegex(q), $options: "i" };
 
     const tasks = [];
     if (type === "all" || type === "snippets") {

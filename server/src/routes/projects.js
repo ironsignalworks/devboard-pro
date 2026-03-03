@@ -1,15 +1,18 @@
 import express from "express";
 import Project from "../models/Project.js";
 import { requireAuth } from "../middleware/auth.js";
+import { escapeRegex } from "../config/security.js";
 
 const router = express.Router();
+const MAX_LIMIT = 100;
+const MAX_QUERY_LENGTH = 120;
 
 // GET /api/projects - list projects for authenticated user
 router.get("/", requireAuth, async (req, res) => {
   try {
     const { page = 1, limit = 10, q, status, tag } = req.query;
     const pageNum = Math.max(parseInt(String(page)) || 1, 1);
-    const limitNum = Math.max(parseInt(String(limit)) || 10, 1);
+    const limitNum = Math.min(Math.max(parseInt(String(limit)) || 10, 1), MAX_LIMIT);
 
     const query = { user: req.userId };
     if (status && status !== "all") {
@@ -19,11 +22,12 @@ router.get("/", requireAuth, async (req, res) => {
       query.tags = String(tag);
     }
     if (q) {
-      const term = String(q).trim();
+      const term = String(q).trim().slice(0, MAX_QUERY_LENGTH);
       if (term) {
+        const safeTerm = escapeRegex(term);
         query.$or = [
-          { title: { $regex: term, $options: "i" } },
-          { description: { $regex: term, $options: "i" } },
+          { title: { $regex: safeTerm, $options: "i" } },
+          { description: { $regex: safeTerm, $options: "i" } },
         ];
       }
     }

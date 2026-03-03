@@ -20,6 +20,8 @@ import { toast } from "@/components/ui/sonner";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Code2 } from "lucide-react";
+import { ensureOk, isApiError } from "@/api/client";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 
 export default function SnippetDetail() {
   const { id } = useParams();
@@ -39,6 +41,7 @@ export default function SnippetDetail() {
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [projectId, setProjectId] = useState("unassigned");
   const [projects, setProjects] = useState<any[]>([]);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
 
   const parseTags = (raw: string) =>
     raw
@@ -70,7 +73,7 @@ export default function SnippetDetail() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getSnippet(id);
+        const res = ensureOk<any>(await getSnippet(id));
         if (cancelled) return;
         setSnippet(res);
         setTitle(res.title || "");
@@ -79,6 +82,16 @@ export default function SnippetDetail() {
         setTags(Array.isArray(res.tags) ? res.tags.join(", ") : "");
         setCode(res.code || "");
         setProjectId(res.projectId ? String(res.projectId) : "unassigned");
+        setSavedSnapshot(
+          JSON.stringify({
+            title: res.title || "",
+            description: res.description || "",
+            language: res.language || "",
+            tags: Array.isArray(res.tags) ? res.tags.join(", ") : "",
+            code: res.code || "",
+            projectId: res.projectId ? String(res.projectId) : "unassigned",
+          })
+        );
       } catch (err) {
         console.error(err);
         setError("Failed to load snippet");
@@ -119,6 +132,19 @@ export default function SnippetDetail() {
   }, [projectId, projects, language]);
 
   const selectedProject = projects.find((project) => project._id === projectId);
+  const isDirty =
+    savedSnapshot.length > 0 &&
+    savedSnapshot !==
+      JSON.stringify({
+        title,
+        description,
+        language: language || "",
+        tags,
+        code,
+        projectId,
+      });
+
+  useUnsavedChangesWarning(isDirty);
 
   const suggestedTags = useMemo(() => {
     const existing = new Set(parseTags(tags).map((t) => t.toLowerCase()));
@@ -149,7 +175,7 @@ export default function SnippetDetail() {
     setSaving(true);
     setError(null);
     try {
-      await updateSnippet(id, {
+      const result = await updateSnippet(id, {
         title,
         description,
         language,
@@ -157,6 +183,17 @@ export default function SnippetDetail() {
         code,
         projectId: projectId === "unassigned" ? null : projectId,
       });
+      if (isApiError(result)) throw new Error(result.message || "Failed to save snippet");
+      setSavedSnapshot(
+        JSON.stringify({
+          title,
+          description,
+          language: language || "",
+          tags,
+          code,
+          projectId,
+        })
+      );
       toast.success("Snippet updated");
       navigate("/snippets");
     } catch (err) {
@@ -172,7 +209,8 @@ export default function SnippetDetail() {
     if (!id) return;
     setDeleting(true);
     try {
-      await deleteSnippet(id);
+      const result = await deleteSnippet(id);
+      if (isApiError(result)) throw new Error(result.message || "Failed to delete snippet");
       toast.success("Snippet deleted");
       navigate("/snippets");
     } catch (err) {
@@ -221,7 +259,14 @@ export default function SnippetDetail() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/snippets")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (isDirty && !window.confirm("You have unsaved changes. Leave anyway?")) return;
+              navigate("/snippets");
+            }}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

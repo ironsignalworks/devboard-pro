@@ -7,6 +7,8 @@ import { toast } from "@/components/ui/sonner";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { FileText } from "lucide-react";
+import { ensureOk, isApiError } from "@/api/client";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 
 export default function NoteEditorPage(){
   const { id } = useParams()
@@ -22,6 +24,7 @@ export default function NoteEditorPage(){
   const [projectId, setProjectId] = useState('unassigned')
   const [projects, setProjects] = useState<any[]>([])
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [savedSnapshot, setSavedSnapshot] = useState("")
 
   const parseTags = (raw: string) =>
     raw
@@ -36,13 +39,21 @@ export default function NoteEditorPage(){
       setLoading(true)
       setError(null)
       try {
-        const res = await getNote(id)
+        const res = ensureOk<any>(await getNote(id))
         if (cancelled) return
         setNote(res)
         setTitle(res.title || '')
         setContent(res.content || '')
         setTags(Array.isArray(res.tags) ? res.tags.join(', ') : '')
         setProjectId(res.projectId ? String(res.projectId) : 'unassigned')
+        setSavedSnapshot(
+          JSON.stringify({
+            title: res.title || '',
+            content: res.content || '',
+            tags: Array.isArray(res.tags) ? res.tags.join(', ') : '',
+            projectId: res.projectId ? String(res.projectId) : 'unassigned',
+          })
+        )
       } catch (err) {
         console.error(err)
         setError("Failed to load note")
@@ -63,17 +74,24 @@ export default function NoteEditorPage(){
       .catch((err) => console.error(err))
   }, [])
 
+  const isDirty =
+    savedSnapshot.length > 0 &&
+    savedSnapshot !== JSON.stringify({ title, content, tags, projectId })
+  useUnsavedChangesWarning(isDirty)
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!id) return
     setSaving(true)
     try {
-      await updateNote(id, {
+      const result = await updateNote(id, {
         title,
         content,
         tags: parseTags(tags),
         projectId: projectId === "unassigned" ? null : projectId,
       })
+      if (isApiError(result)) throw new Error(result.message || "Failed to update note")
+      setSavedSnapshot(JSON.stringify({ title, content, tags, projectId }))
       toast.success("Note updated")
       navigate('/notes')
     } catch (err) {
@@ -88,7 +106,8 @@ export default function NoteEditorPage(){
     if (!id) return
     setDeleting(true)
     try {
-      await deleteNote(id)
+      const result = await deleteNote(id)
+      if (isApiError(result)) throw new Error(result.message || "Failed to delete note")
       toast.success("Note deleted")
       navigate('/notes')
     } catch (err) {
@@ -150,7 +169,16 @@ export default function NoteEditorPage(){
           <button className="px-3 py-1 bg-primary text-white rounded w-full sm:w-auto" type="submit" disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </button>
-          <button type="button" onClick={() => navigate('/notes')} className="px-3 py-1 border rounded w-full sm:w-auto">Cancel</button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isDirty && !window.confirm("You have unsaved changes. Leave anyway?")) return
+              navigate('/notes')
+            }}
+            className="px-3 py-1 border rounded w-full sm:w-auto"
+          >
+            Cancel
+          </button>
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}

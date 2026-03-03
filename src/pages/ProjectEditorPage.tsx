@@ -12,6 +12,8 @@ import { tagBadgeStyle } from "@/lib/tagColors";
 import { toast } from "@/components/ui/sonner";
 import { EmptyState } from "@/components/EmptyState";
 import { FolderKanban } from "lucide-react";
+import { ensureOk, isApiError } from "@/api/client";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 
 export default function ProjectEditorPage() {
   const { id } = useParams();
@@ -38,6 +40,7 @@ export default function ProjectEditorPage() {
   const [unassignedNoteQuery, setUnassignedNoteQuery] = useState("");
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
+  const [savedSnapshot, setSavedSnapshot] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +49,7 @@ export default function ProjectEditorPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await call(`/api/projects/${id}`);
+        const res = ensureOk<any>(await call(`/api/projects/${id}`));
         if (cancelled) return;
         setProject(res);
         setTitle(res.title || "");
@@ -54,6 +57,15 @@ export default function ProjectEditorPage() {
         setStatus(res.status || "active");
         setPreferredLanguage(res.preferredLanguage || "");
         setTags(Array.isArray(res.tags) ? res.tags.join(", ") : "");
+        setSavedSnapshot(
+          JSON.stringify({
+            title: res.title || "",
+            description: res.description || "",
+            status: res.status || "active",
+            preferredLanguage: res.preferredLanguage || "",
+            tags: Array.isArray(res.tags) ? res.tags.join(", ") : "",
+          })
+        );
       } catch (err) {
         console.error(err);
         setError("Failed to load project");
@@ -123,7 +135,7 @@ export default function ProjectEditorPage() {
     if (!id) return;
     setSaving(true);
     try {
-      await call(`/api/projects/${id}`, {
+      const result = await call(`/api/projects/${id}`, {
         method: "PUT",
         body: JSON.stringify({
           title,
@@ -136,6 +148,8 @@ export default function ProjectEditorPage() {
             .filter(Boolean),
         }),
       });
+      if (isApiError(result)) throw new Error(result.message || "Failed to update project");
+      setSavedSnapshot(JSON.stringify({ title, description, status, preferredLanguage, tags }));
       toast.success("Project updated");
       navigate("/projects");
     } catch (err) {
@@ -159,9 +173,11 @@ export default function ProjectEditorPage() {
       const data = JSON.parse(payload);
       if (!data?.itemId || !data?.type) return;
       if (data.type === "snippet") {
-        await updateSnippet(data.itemId, { projectId: targetProjectId });
+        const result = await updateSnippet(data.itemId, { projectId: targetProjectId });
+        if (isApiError(result)) throw new Error(result.message || "Failed to move snippet");
       } else if (data.type === "note") {
-        await updateNote(data.itemId, { projectId: targetProjectId });
+        const result = await updateNote(data.itemId, { projectId: targetProjectId });
+        if (isApiError(result)) throw new Error(result.message || "Failed to move note");
       }
       loadItems();
     } catch (err) {
@@ -228,6 +244,11 @@ export default function ProjectEditorPage() {
     });
   }, [unassignedNotes, unassignedNoteQuery]);
 
+  const isDirty =
+    savedSnapshot.length > 0 &&
+    savedSnapshot !== JSON.stringify({ title, description, status, preferredLanguage, tags });
+  useUnsavedChangesWarning(isDirty);
+
   if (loading) return <div className="p-4 sm:p-6 text-sm text-muted-foreground">Loading project...</div>;
   if (!project) {
     return (
@@ -248,7 +269,10 @@ export default function ProjectEditorPage() {
           <button
             type="button"
             className="text-sm text-muted-foreground hover:underline"
-            onClick={() => navigate("/projects")}
+            onClick={() => {
+              if (isDirty && !window.confirm("You have unsaved changes. Leave anyway?")) return;
+              navigate("/projects");
+            }}
           >
             Back to projects
           </button>
@@ -346,7 +370,10 @@ export default function ProjectEditorPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate("/projects")}
+                  onClick={() => {
+                    if (isDirty && !window.confirm("You have unsaved changes. Leave anyway?")) return;
+                    navigate("/projects");
+                  }}
                   className="px-3 py-1 border rounded w-full sm:w-auto"
                 >
                   Cancel

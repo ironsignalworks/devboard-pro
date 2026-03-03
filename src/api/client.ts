@@ -9,9 +9,25 @@ const parseResponse = async (res: Response) => {
   try { return JSON.parse(text) } catch { return text }
 }
 
+const readCookie = (name: string) => {
+  if (typeof document === 'undefined') return ''
+  const parts = document.cookie.split(';').map((part) => part.trim())
+  for (const part of parts) {
+    if (part.startsWith(`${name}=`)) {
+      return decodeURIComponent(part.slice(name.length + 1))
+    }
+  }
+  return ''
+}
+
 export const call = async (path: string, opts: RequestInit = {}, allowRetry = true) => {
   const url = API + path
+  const method = String(opts.method || 'GET').toUpperCase()
   const headers: any = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    const csrf = readCookie('csrfToken')
+    if (csrf) headers['x-csrf-token'] = csrf
+  }
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
@@ -20,7 +36,15 @@ export const call = async (path: string, opts: RequestInit = {}, allowRetry = tr
   try {
     const res = await fetch(url, { ...opts, headers, credentials: 'include', signal: controller.signal })
     if (res.status === 401 && allowRetry) {
-      const refreshRes = await fetch(API + '/api/auth/refresh', { method: 'POST', credentials: 'include', signal: controller.signal })
+      const refreshHeaders: Record<string, string> = {}
+      const csrf = readCookie('csrfToken')
+      if (csrf) refreshHeaders['x-csrf-token'] = csrf
+      const refreshRes = await fetch(API + '/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        signal: controller.signal,
+        headers: refreshHeaders,
+      })
       if (refreshRes.ok) {
         return call(path, opts, false)
       }
@@ -41,6 +65,18 @@ export const call = async (path: string, opts: RequestInit = {}, allowRetry = tr
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+export const isApiError = (
+  value: unknown
+): value is { __error: true; message?: string; status?: number } =>
+  Boolean(value && typeof value === "object" && "__error" in value && (value as { __error?: boolean }).__error === true)
+
+export const ensureOk = <T = unknown>(value: T | { __error: true; message?: string }) => {
+  if (isApiError(value)) {
+    throw new Error(value.message || "Request failed")
+  }
+  return value as T
 }
 
 export default call

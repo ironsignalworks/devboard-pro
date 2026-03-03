@@ -27,6 +27,9 @@ jobs:
       - name: Test (root)
         run: npm test -- --run
 
+      - name: Build (root)
+        run: npm run build
+
       - name: Install server deps
         run: npm ci
         working-directory: server
