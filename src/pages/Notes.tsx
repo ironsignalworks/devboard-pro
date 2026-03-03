@@ -15,6 +15,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/sonner";
 import ListSkeleton from "@/components/ListSkeleton";
+import InlineRefreshIndicator from "@/components/InlineRefreshIndicator";
 
 export default function Notes() {
   const [notes, setNotes] = useState<any[]>([])
@@ -197,7 +198,7 @@ export default function Notes() {
         </Button>
       </div>
 
-      {refreshing && <p className="text-sm text-muted-foreground">Refreshing notes...</p>}
+      {refreshing && <InlineRefreshIndicator label="Refreshing notes..." />}
 
       {loading && !hasLoaded ? (
         <ListSkeleton rows={4} />

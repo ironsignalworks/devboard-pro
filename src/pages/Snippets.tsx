@@ -21,6 +21,7 @@ import { tagBadgeStyle } from "@/lib/tagColors";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/sonner";
 import ListSkeleton from "@/components/ListSkeleton";
+import InlineRefreshIndicator from "@/components/InlineRefreshIndicator";
 
 export default function Snippets() {
   const [snippets, setSnippets] = useState<any[]>([]);
@@ -322,7 +323,7 @@ export default function Snippets() {
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {refreshing && <p className="text-sm text-muted-foreground">Refreshing snippets...</p>}
+      {refreshing && <InlineRefreshIndicator label="Refreshing snippets..." />}
 
       {loading && !hasLoaded ? (
         <ListSkeleton rows={4} />

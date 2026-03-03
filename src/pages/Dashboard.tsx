@@ -23,6 +23,7 @@ import {
 import { tagBadgeStyle } from "@/lib/tagColors";
 import ListSkeleton from "@/components/ListSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import InlineRefreshIndicator from "@/components/InlineRefreshIndicator";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -339,7 +340,7 @@ export default function Dashboard() {
               </AreaChart>
             </ChartContainer>
           </div>
-          {secondaryLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+          {secondaryLoading && <InlineRefreshIndicator label="Loading analytics..." />}
         </DialogContent>
       </Dialog>
 

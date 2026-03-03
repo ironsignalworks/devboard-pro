@@ -13,6 +13,7 @@ import { tagBadgeStyle } from "@/lib/tagColors";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/sonner";
 import ListSkeleton from "@/components/ListSkeleton";
+import InlineRefreshIndicator from "@/components/InlineRefreshIndicator";
 
 export default function Projects(){
   const [filter, setFilter] = useState<"all" | "active" | "completed" | "archived">("all");
@@ -189,7 +190,7 @@ export default function Projects(){
         </Button>
       </div>
 
-      {refreshing && <p className="text-sm text-muted-foreground">Refreshing projects...</p>}
+      {refreshing && <InlineRefreshIndicator label="Refreshing projects..." />}
 
       {loading && !hasLoaded ? <ListSkeleton rows={4} /> : (
         projects.length > 0 ? (
