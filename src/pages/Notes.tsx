@@ -19,6 +19,8 @@ import ListSkeleton from "@/components/ListSkeleton";
 export default function Notes() {
   const [notes, setNotes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [limit] = useState(9)
@@ -51,7 +53,12 @@ export default function Notes() {
   }
 
   const load = async (p = 1, overrideTag?: string) => {
-    setLoading(true)
+    const showBlockingLoader = !hasLoaded
+    if (showBlockingLoader) {
+      setLoading(true)
+    } else {
+      setRefreshing(true)
+    }
     try {
       const activeTag = overrideTag !== undefined ? overrideTag : tagFilter
       const res = await listNotes({ page: p, limit, q: q.trim() || undefined, tag: activeTag.trim() || undefined })
@@ -62,7 +69,12 @@ export default function Notes() {
     } catch (err) {
       console.error(err)
     } finally {
-      setLoading(false)
+      if (showBlockingLoader) {
+        setLoading(false)
+      } else {
+        setRefreshing(false)
+      }
+      setHasLoaded(true)
     }
   }
 
@@ -185,7 +197,9 @@ export default function Notes() {
         </Button>
       </div>
 
-      {loading ? (
+      {refreshing && <p className="text-sm text-muted-foreground">Refreshing notes...</p>}
+
+      {loading && !hasLoaded ? (
         <ListSkeleton rows={4} />
       ) : notes.length > 0 ? (
         <div>

@@ -24,6 +24,8 @@ export default function Projects(){
   const [status, setStatus] = useState('active')
   const [tags, setTags] = useState('')
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [tagFilter, setTagFilter] = useState('')
@@ -42,7 +44,12 @@ export default function Projects(){
       .filter(Boolean)
 
   const load = async (p=1, overrideTag?: string)=>{
-    setLoading(true)
+    const showBlockingLoader = !hasLoaded
+    if (showBlockingLoader) {
+      setLoading(true)
+    } else {
+      setRefreshing(true)
+    }
     try{
       const activeTag = overrideTag !== undefined ? overrideTag : tagFilter
       const res = await listProjects({
@@ -55,7 +62,14 @@ export default function Projects(){
       setProjects(res?.items || [])
       setTotal(res?.total || 0)
       setPage(res?.page || p)
-    }catch(err){ console.error(err) }finally{ setLoading(false) }
+    }catch(err){ console.error(err) }finally{
+      if (showBlockingLoader) {
+        setLoading(false)
+      } else {
+        setRefreshing(false)
+      }
+      setHasLoaded(true)
+    }
   }
 
   useEffect(()=>{ load(1) },[filter])
@@ -175,7 +189,9 @@ export default function Projects(){
         </Button>
       </div>
 
-      {loading ? <ListSkeleton rows={4} /> : (
+      {refreshing && <p className="text-sm text-muted-foreground">Refreshing projects...</p>}
+
+      {loading && !hasLoaded ? <ListSkeleton rows={4} /> : (
         projects.length > 0 ? (
           <div>
             <div className="space-y-3">

@@ -25,6 +25,8 @@ import ListSkeleton from "@/components/ListSkeleton";
 export default function Snippets() {
   const [snippets, setSnippets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [tag, setTag] = useState("");
@@ -79,7 +81,12 @@ export default function Snippets() {
   };
 
   const load = async (overrideTag?: string) => {
-    setLoading(true);
+    const showBlockingLoader = !hasLoaded;
+    if (showBlockingLoader) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError(null);
     try {
       const activeTag = overrideTag !== undefined ? overrideTag : tag;
@@ -94,7 +101,12 @@ export default function Snippets() {
       console.error(err);
       setError("Failed to load snippets");
     } finally {
-      setLoading(false);
+      if (showBlockingLoader) {
+        setLoading(false);
+      } else {
+        setRefreshing(false);
+      }
+      setHasLoaded(true);
     }
   };
 
@@ -310,8 +322,9 @@ export default function Snippets() {
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {refreshing && <p className="text-sm text-muted-foreground">Refreshing snippets...</p>}
 
-      {loading ? (
+      {loading && !hasLoaded ? (
         <ListSkeleton rows={4} />
       ) : filtered.length > 0 ? (
         <div className="space-y-3">

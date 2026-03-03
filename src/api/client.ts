@@ -1,6 +1,7 @@
 // Default to empty string so requests to "/api" go through Vite dev server proxy in development.
 // Set VITE_API_URL when you need to target a different backend (e.g. production build).
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+const REQUEST_TIMEOUT_MS = 10000
 
 const parseResponse = async (res: Response) => {
   if (res.status === 204) return null
@@ -11,13 +12,15 @@ const parseResponse = async (res: Response) => {
 export const call = async (path: string, opts: RequestInit = {}, allowRetry = true) => {
   const url = API + path
   const headers: any = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   console.log('[api] request]', opts.method || 'GET', url)
 
   try {
-    const res = await fetch(url, { ...opts, headers, credentials: 'include' })
+    const res = await fetch(url, { ...opts, headers, credentials: 'include', signal: controller.signal })
     if (res.status === 401 && allowRetry) {
-      const refreshRes = await fetch(API + '/api/auth/refresh', { method: 'POST', credentials: 'include' })
+      const refreshRes = await fetch(API + '/api/auth/refresh', { method: 'POST', credentials: 'include', signal: controller.signal })
       if (refreshRes.ok) {
         return call(path, opts, false)
       }
@@ -31,8 +34,12 @@ export const call = async (path: string, opts: RequestInit = {}, allowRetry = tr
     }
     return payload
   } catch (err: any) {
-    console.error('[api] network error', err && err.message ? err.message : err)
-    return { __error: true, message: err?.message || 'Network error' }
+    const isTimeout = err?.name === 'AbortError'
+    const message = isTimeout ? 'Request timed out' : (err?.message || 'Network error')
+    console.error('[api] network error', message)
+    return { __error: true, message }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

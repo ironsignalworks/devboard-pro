@@ -1,4 +1,4 @@
-﻿import { Code2, FileText, FolderKanban, Plus, TrendingDown, TrendingUp, Tag } from "lucide-react";
+import { Code2, FileText, FolderKanban, Plus, TrendingDown, TrendingUp, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useMemo, useState } from "react";
@@ -62,21 +62,19 @@ export default function Dashboard() {
   const [activityItems, setActivityItems] = useState<any[]>([]);
   const [analyticsSeries, setAnalyticsSeries] = useState<any[] | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [primaryLoading, setPrimaryLoading] = useState(false);
+  const [secondaryLoading, setSecondaryLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        setLoading(true);
-        const [snipsRes, projsRes, notesRes, tagsRes, activityRes, analyticsRes] = await Promise.all([
-          listSnippets({ page: snippetPage, limit: 100 }),
-          listProjects({ page: projectPage, limit: 100 }),
-          listNotes({ page: 1, limit: 100 }),
-          listTags(),
-          listActivity(12),
-          getProductivity(7),
+        setPrimaryLoading(true);
+        const [snipsRes, projsRes, notesRes] = await Promise.all([
+          listSnippets({ page: snippetPage, limit: 20 }),
+          listProjects({ page: projectPage, limit: 20 }),
+          listNotes({ page: 1, limit: 20 }),
         ]);
 
         if (cancelled) return;
@@ -109,19 +107,33 @@ export default function Dashboard() {
           setNoteItems([]);
         }
 
+      } catch (err) {
+        console.error("Dashboard load error", err);
+      } finally {
+        if (!cancelled) setPrimaryLoading(false);
+      }
+
+      try {
+        setSecondaryLoading(true);
+        const [tagsRes, activityRes, analyticsRes] = await Promise.all([
+          listTags(),
+          listActivity(12),
+          getProductivity(7),
+        ]);
+        if (cancelled) return;
+
         const tagItems = Array.isArray(tagsRes?.items) ? tagsRes.items : [];
         const nextMap: Record<string, string> = {};
         for (const tag of tagItems) {
           if (tag?.name && tag?.color) nextMap[tag.name] = tag.color;
         }
         setTagColorMap(nextMap);
-
         setActivityItems(Array.isArray(activityRes?.items) ? activityRes.items : []);
         setAnalyticsSeries(Array.isArray(analyticsRes?.series) ? analyticsRes.series : null);
       } catch (err) {
-        console.error("Dashboard load error", err);
+        console.error("Dashboard secondary load error", err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setSecondaryLoading(false);
       }
     };
 
@@ -327,7 +339,7 @@ export default function Dashboard() {
               </AreaChart>
             </ChartContainer>
           </div>
-          {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
+          {secondaryLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
         </DialogContent>
       </Dialog>
 
@@ -341,7 +353,7 @@ export default function Dashboard() {
           </div>
           <Card>
             <CardContent className="p-4 space-y-3 max-h-[320px] overflow-auto">
-              {loading ? (
+              {primaryLoading || secondaryLoading ? (
                 <ListSkeleton rows={3} />
               ) : activityItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No activity yet.</p>
@@ -380,7 +392,7 @@ export default function Dashboard() {
           </div>
           <Card>
             <CardContent className="p-4 space-y-3 max-h-[320px] overflow-auto">
-              {loading ? (
+              {primaryLoading || secondaryLoading ? (
                 <ListSkeleton rows={3} />
               ) : activityItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No notifications yet.</p>
@@ -412,7 +424,7 @@ export default function Dashboard() {
           </button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {loading ? (
+          {primaryLoading ? (
             <ListSkeleton rows={3} />
           ) : (
             recentSnippets.map((snippet, index) => (
@@ -465,7 +477,7 @@ export default function Dashboard() {
           </button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {loading ? (
+          {primaryLoading ? (
             <ListSkeleton rows={3} />
           ) : (
             recentNotes.map((note, index) => (
@@ -515,7 +527,7 @@ export default function Dashboard() {
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {loading ? (
+          {primaryLoading || secondaryLoading ? (
             <div className="flex gap-2">
               <Skeleton className="h-6 w-20 rounded-full" />
               <Skeleton className="h-6 w-24 rounded-full" />
@@ -532,7 +544,7 @@ export default function Dashboard() {
               </div>
             ))
           )}
-          {!loading && recentTags.length === 0 && (
+          {!primaryLoading && !secondaryLoading && recentTags.length === 0 && (
             <p className="text-sm text-muted-foreground">No tags yet</p>
           )}
         </div>
@@ -546,7 +558,7 @@ export default function Dashboard() {
           </button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {loading ? (
+          {primaryLoading ? (
             <ListSkeleton rows={2} />
           ) : (
             projects.map((project, index) => (

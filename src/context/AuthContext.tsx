@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const raw = localStorage.getItem('user')
     return raw ? JSON.parse(raw) : null
   })
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState<boolean>(() => !localStorage.getItem('user'))
   const [authError, setAuthError] = useState<string | null>(null)
 
   const login = (u: any) => {
@@ -41,12 +41,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let cancelled = false
+    const hasLocalUser = !!localStorage.getItem('user')
     const validate = async () => {
       try {
-        setLoading(true)
+        // If a user is already cached, validate session in background without blocking routes.
+        if (!hasLocalUser) setLoading(true)
         const res = await call('/api/auth/me')
         console.log('[auth] /me response', res)
         if (!cancelled) {
+          if (res?.__error) {
+            // keep cached session usable while backend is temporarily slow/unreachable
+            if (!hasLocalUser) {
+              logout()
+              setAuthError(res?.message || 'Auth validation failed')
+            }
+            return
+          }
           if (res?.user) {
             setUser(res.user)
             // ensure localStorage user sync
@@ -59,8 +69,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (err: any) {
         console.error('[auth] /me error', err)
         if (!cancelled) {
-          logout()
-          setAuthError(err?.message || 'Auth validation failed')
+          if (!hasLocalUser) {
+            logout()
+            setAuthError(err?.message || 'Auth validation failed')
+          }
         }
       } finally {
         if (!cancelled) setLoading(false)
