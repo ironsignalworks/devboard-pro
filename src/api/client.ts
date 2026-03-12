@@ -3,7 +3,7 @@
 const API = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const REQUEST_TIMEOUT_MS = 10000
 
-const parseResponse = async (res: Response) => {
+const parseResponse = async (res: Response): Promise<unknown> => {
   if (res.status === 204) return null
   const text = await res.text()
   try { return JSON.parse(text) } catch { return text }
@@ -20,10 +20,20 @@ const readCookie = (name: string) => {
   return ''
 }
 
-export const call = async (path: string, opts: RequestInit = {}, allowRetry = true) => {
+export type ApiError = { __error: true; message?: string; status?: number };
+export type ApiResult<T = unknown> = T | ApiError;
+
+export const call = async <T = unknown>(
+  path: string,
+  opts: RequestInit = {},
+  allowRetry = true
+): Promise<ApiResult<T>> => {
   const url = API + path
   const method = String(opts.method || 'GET').toUpperCase()
-  const headers: any = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opts.headers as Record<string, string> | undefined),
+  }
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     const csrf = readCookie('csrfToken')
     if (csrf) headers['x-csrf-token'] = csrf
@@ -49,17 +59,18 @@ export const call = async (path: string, opts: RequestInit = {}, allowRetry = tr
         return call(path, opts, false)
       }
     }
-    const payload: any = await parseResponse(res)
+    const payload = await parseResponse(res)
     if (!res.ok) {
-      if (payload && typeof payload === 'object') {
-        return { __error: true, status: res.status, ...payload }
+      if (payload && typeof payload === 'object' && payload !== null) {
+        return { __error: true, status: res.status, ...(payload as Record<string, unknown>) }
       }
       return { __error: true, status: res.status, message: String(payload || `Request failed (${res.status})`) }
     }
-    return payload
-  } catch (err: any) {
-    const isTimeout = err?.name === 'AbortError'
-    const message = isTimeout ? 'Request timed out' : (err?.message || 'Network error')
+    return payload as T
+  } catch (err) {
+    const error = err as { name?: string; message?: string }
+    const isTimeout = error?.name === 'AbortError'
+    const message = isTimeout ? 'Request timed out' : (error?.message || 'Network error')
     console.error('[api] network error', message)
     return { __error: true, message }
   } finally {
@@ -69,10 +80,15 @@ export const call = async (path: string, opts: RequestInit = {}, allowRetry = tr
 
 export const isApiError = (
   value: unknown
-): value is { __error: true; message?: string; status?: number } =>
-  Boolean(value && typeof value === "object" && "__error" in value && (value as { __error?: boolean }).__error === true)
+): value is ApiError =>
+  Boolean(
+    value &&
+      typeof value === "object" &&
+      "__error" in value &&
+      (value as { __error?: boolean }).__error === true
+  )
 
-export const ensureOk = <T = unknown>(value: T | { __error: true; message?: string }) => {
+export const ensureOk = <T = unknown>(value: ApiResult<T>) => {
   if (isApiError(value)) {
     throw new Error(value.message || "Request failed")
   }

@@ -309,8 +309,6 @@ router.post("/login", authLimiter, async (req, res) => {
 // POST /api/auth/guest - create a short-lived guest account
 router.post("/guest", authLimiter, async (req, res) => {
   try {
-    await pruneExpiredGuests();
-
     const randomId = crypto.randomBytes(8).toString("hex");
     const guestEmail = `guest-${randomId}@guest.devboard.local`;
     const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
@@ -323,8 +321,6 @@ router.post("/guest", authLimiter, async (req, res) => {
       isGuest: true,
       guestExpiresAt: new Date(Date.now() + GUEST_TTL_MS),
     });
-
-    await seedSampleDataForUser(user._id);
 
     const accessToken = issueAccessToken(user._id);
     const refreshToken = createToken();
@@ -343,6 +339,17 @@ router.post("/guest", authLimiter, async (req, res) => {
         guestExpiresAt: user.guestExpiresAt,
       },
     });
+
+    // Fire-and-forget background work: cleanup old guests + seed demo data.
+    // Intentionally not awaited so the response is fast for the client.
+    void (async () => {
+      try {
+        await pruneExpiredGuests();
+        await seedSampleDataForUser(user._id);
+      } catch (err) {
+        console.error("Auth guest background work error:", err?.stack || err);
+      }
+    })();
   } catch (err) {
     console.error("Auth guest error:", err.stack || err);
     res.status(500).json({ message: "Server error" });

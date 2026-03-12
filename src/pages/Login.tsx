@@ -1,163 +1,146 @@
+import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { guestLogin, loginUser } from "../api/auth";
-import { useAuth } from "../context/AuthContext";
 import { toast } from "@/components/ui/sonner";
+import call, { isApiError } from "@/api/client";
+import { useAuth, type AuthUser } from "@/context/AuthContext";
+
+type LoginResponse = {
+  user?: AuthUser;
+  message?: string;
+  requiresVerification?: boolean;
+};
 
 export default function Login() {
-  const navigate = useNavigate();
   const { login } = useAuth();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
-  const busy = loading || guestLoading;
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!email.trim() || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
+    setSubmitting(true);
     try {
-      const data: any = await loginUser({ email, password });
-      if (data?.user) {
-        login(data.user);
-        toast.success("Welcome back!");
-        navigate("/");
-      } else if (data?.requiresVerification) {
-        setError("Please verify your email before logging in.");
-        toast.error("Please verify your email before logging in.");
-      } else {
-        setError(data?.message || "Login failed");
-        toast.error(data?.message || "Login failed");
+      const res = await call<LoginResponse>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (isApiError(res)) {
+        toast.error(res.message || "Login failed");
+        return;
       }
+
+      if (res.requiresVerification) {
+        toast.message("Check your email", {
+          description: "Please verify your email before logging in.",
+        });
+        return;
+      }
+
+      if (!res.user) {
+        toast.error("Login failed");
+        return;
+      }
+
+      login(res.user);
+      navigate("/");
     } catch (err) {
-      console.error(err);
-      setError("Network error");
-      toast.error("Network error");
+      const e = err as { message?: string };
+      console.error("Login error", e?.message || err);
+      toast.error(e?.message || "Login failed");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const handleGuest = async () => {
-    setError(null);
-    setGuestLoading(true);
+  const handleGuestLogin = async () => {
+    setSubmitting(true);
     try {
-      const data: any = await guestLogin();
-      if (data?.user) {
-        login(data.user);
-        toast.success("Welcome to the demo!");
-        navigate("/");
-      } else {
-        setError(data?.message || "Demo login failed");
-        toast.error(data?.message || "Demo login failed");
+      const res = await call<{ user?: AuthUser; message?: string }>("/api/auth/guest", {
+        method: "POST",
+      });
+
+      if (isApiError(res)) {
+        toast.error(res.message || "Guest login failed");
+        return;
       }
+
+      if (!res.user) {
+        toast.error("Guest login failed");
+        return;
+      }
+
+      login(res.user);
+      navigate("/");
     } catch (err) {
-      console.error(err);
-      setError("Network error");
-      toast.error("Network error");
+      const e = err as { message?: string };
+      console.error("Guest login error", e?.message || err);
+      toast.error(e?.message || "Guest login failed");
     } finally {
-      setGuestLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4 text-center">
-          <div className="flex justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <img
-                src={`${import.meta.env.BASE_URL}logo_app.png`}
-                alt="DevBoard Pro"
-                className="h-8 w-8 object-contain"
-              />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-muted">
+      <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+        <h1 className="mb-4 text-2xl font-bold">Sign in</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={submitting}
+            />
           </div>
-          <div>
-            <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>
-              Sign in to your DevBoard Pro account
-            </CardDescription>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={submitting}
+            />
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember" />
-                <label
-                  htmlFor="remember"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Remember me
-                </label>
-              </div>
-              <Button
-                variant="link"
-                className="px-0 text-sm"
-                type="button"
-                onClick={() => navigate("/forgot-password")}
-              >
-                Forgot password?
-              </Button>
-            </div>
-            <Button type="submit" className="w-full" disabled={busy}>
-              {loading ? "Signing In..." : "Sign In"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              onClick={handleGuest}
-              disabled={busy}
-            >
-              {guestLoading ? "Launching Demo..." : "Try Demo (No Account)"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Button 
-              variant="link" 
-              className="px-1 text-primary" 
-              onClick={() => navigate("/register")}
-            >
-              Sign up
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
+        <div className="mt-4 flex flex-col gap-2">
+          <Button variant="outline" className="w-full" disabled={submitting} onClick={handleGuestLogin}>
+            Continue as guest
+          </Button>
+          <button
+            type="button"
+            className="text-sm text-primary hover:underline"
+            onClick={() => navigate("/forgot-password")}
+          >
+            Forgot your password?
+          </button>
+          <button
+            type="button"
+            className="text-sm text-primary hover:underline"
+            onClick={() => navigate("/register")}
+          >
+            Create an account
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

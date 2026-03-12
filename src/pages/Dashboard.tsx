@@ -45,12 +45,12 @@ const lastNDays = (days: number) => {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [recentSnippets, setRecentSnippets] = useState<any[]>([]);
+  const [recentSnippets, setRecentSnippets] = useState<unknown[]>([]);
   const [snippetsTotal, setSnippetsTotal] = useState(0);
   const [snippetPage] = useState(1);
   const [snippetLimit] = useState(6);
 
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<unknown[]>([]);
   const [projectsTotal, setProjectsTotal] = useState(0);
   const [projectPage] = useState(1);
   const [projectLimit] = useState(6);
@@ -73,9 +73,9 @@ export default function Dashboard() {
       try {
         setPrimaryLoading(true);
         const [snipsRes, projsRes, notesRes] = await Promise.all([
-          listSnippets({ page: snippetPage, limit: 20 }),
-          listProjects({ page: projectPage, limit: 20 }),
-          listNotes({ page: 1, limit: 20 }),
+          listSnippets({ page: snippetPage, limit: 10 }),
+          listProjects({ page: projectPage, limit: 10 }),
+          listNotes({ page: 1, limit: 10 }),
         ]);
 
         if (cancelled) return;

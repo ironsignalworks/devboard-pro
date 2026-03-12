@@ -1,6 +1,15 @@
 import call from './client'
+import type { ApiResult } from './client'
 
-export const listProjects = (opts: { page?: number, limit?: number, q?: string, status?: string, tag?: string } = {}) => {
+export interface ProjectPayload {
+  title: string
+  description?: string
+  status?: string
+  tags?: string[]
+  preferredLanguage?: string | null
+}
+
+export const listProjects = (opts: { page?: number; limit?: number; q?: string; status?: string; tag?: string } = {}) => {
   const params = new URLSearchParams()
   if (opts.page) params.set('page', String(opts.page))
   if (opts.limit) params.set('limit', String(opts.limit))
@@ -11,7 +20,9 @@ export const listProjects = (opts: { page?: number, limit?: number, q?: string, 
   return call(path)
 }
 
-export const createProject = (data:any) => call('/api/projects', { method: 'POST', body: JSON.stringify(data) })
+export const createProject = (data: ProjectPayload): Promise<ApiResult> =>
+  call('/api/projects', { method: 'POST', body: JSON.stringify(data) })
 export const getProject = (id: string) => call(`/api/projects/${id}`)
-export const updateProject = (id: string, data: any) => call(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+export const updateProject = (id: string, data: ProjectPayload): Promise<ApiResult> =>
+  call(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 export const deleteProject = (id: string) => call(`/api/projects/${id}`, { method: 'DELETE' })

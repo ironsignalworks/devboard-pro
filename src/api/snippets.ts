@@ -1,6 +1,16 @@
 import call from './client'
+import type { ApiResult } from './client'
 
-export const listSnippets = (opts: { page?: number, limit?: number, q?: string, tag?: string, projectId?: string } = {}) => {
+export interface SnippetPayload {
+  title: string
+  description?: string
+  code?: string
+  language?: string
+  tags?: string[]
+  projectId?: string | null
+}
+
+export const listSnippets = (opts: { page?: number; limit?: number; q?: string; tag?: string; projectId?: string } = {}) => {
   const params = new URLSearchParams()
   if (opts.page) params.set('page', String(opts.page))
   if (opts.limit) params.set('limit', String(opts.limit))
@@ -10,8 +20,10 @@ export const listSnippets = (opts: { page?: number, limit?: number, q?: string, 
   const path = '/api/snippets' + (params.toString() ? `?${params.toString()}` : '')
   return call(path)
 }
-export const createSnippet = (data: any) => call('/api/snippets', { method: 'POST', body: JSON.stringify(data) })
+export const createSnippet = (data: SnippetPayload): Promise<ApiResult> =>
+  call('/api/snippets', { method: 'POST', body: JSON.stringify(data) })
 
 export const getSnippet = (id: string) => call(`/api/snippets/${id}`)
-export const updateSnippet = (id: string, data: any) => call(`/api/snippets/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+export const updateSnippet = (id: string, data: SnippetPayload): Promise<ApiResult> =>
+  call(`/api/snippets/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 export const deleteSnippet = (id: string) => call(`/api/snippets/${id}`, { method: 'DELETE' })

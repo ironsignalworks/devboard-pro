@@ -3,7 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }){
-  const { user, loading, authError, clearAuthError } = useAuth() as any
+  const { user, loading, authError, clearAuthError } = useAuth()
   if (loading && !user) return <div className="p-6">Loading...</div>
   if (authError) {
     return (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { searchAll } from "../api/search";
 import { listTags } from "../api/tags";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,8 +41,9 @@ export default function SearchDialog({ open, onOpenChange }: { open: boolean; on
   useEffect(() => {
     if (!open) return;
     listTags()
-      .then((res: any) => {
-        const items = Array.isArray(res?.items) ? res.items : [];
+      .then((res) => {
+        const payload = res as { items?: { name?: string; color?: string }[] };
+        const items = Array.isArray(payload.items) ? payload.items : [];
         const nextMap: Record<string, string> = {};
         for (const tag of items) {
           if (tag?.name && tag?.color) nextMap[tag.name] = tag.color;
@@ -52,29 +53,30 @@ export default function SearchDialog({ open, onOpenChange }: { open: boolean; on
       .catch((err) => console.error(err));
   }, [open]);
 
-  const runSearch = async () => {
+  const runSearch = useCallback(async () => {
     if (!q.trim()) {
       setItems([]);
       return;
     }
     setLoading(true);
     try {
-      const res: any = await searchAll(q.trim(), type);
-      setItems(Array.isArray(res?.items) ? res.items : []);
+      const res = await searchAll(q.trim(), type);
+      const payload = res as { items?: ResultItem[] };
+      setItems(Array.isArray(payload?.items) ? payload.items : []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [q, type]);
 
   useEffect(() => {
     if (!open) return;
     const handler = setTimeout(() => {
-      runSearch();
+      void runSearch();
     }, 250);
     return () => clearTimeout(handler);
-  }, [q, type, open]);
+  }, [open, runSearch]);
 
   const goTo = (item: ResultItem) => {
     if (item.type === "snippet") navigate(`/snippets/${item.id}`);
