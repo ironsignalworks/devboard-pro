@@ -142,7 +142,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [projectLimit, projectPage, snippetLimit, snippetPage]);
 
   const productivityData = useMemo(() => {
     if (analyticsSeries) return analyticsSeries;

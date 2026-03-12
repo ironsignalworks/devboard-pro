@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -90,7 +91,7 @@ export default function Notes() {
     if (searchParams.get("create") === "1") {
       setCreateOpen(true)
     }
-  }, [searchParams])
+  }, [searchParams, tagFilter])
 
   useEffect(() => {
     listProjects({ page: 1, limit: 100 })

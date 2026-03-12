@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useMemo, useState } from "react";
 import { Code2, Filter, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,7 +125,7 @@ export default function Snippets() {
     if (searchParams.get("create") === "1") {
       setCreateOpen(true);
     }
-  }, [searchParams]);
+  }, [searchParams, tag]);
 
   useEffect(() => {
     listTags()

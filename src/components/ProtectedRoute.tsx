@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export default function ProtectedRoute({ children }: { children: React.ReactNode }){
   const { user, loading, authError, clearAuthError } = useAuth()
   if (loading && !user) return <div className="p-6">Loading...</div>
+  if (!user) return <Navigate to="/login" replace />
   if (authError) {
     return (
       <div className="p-6 text-red-600">
@@ -23,6 +24,5 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       </div>
     )
   }
-  if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }

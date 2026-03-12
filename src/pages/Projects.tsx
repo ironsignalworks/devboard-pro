@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { FolderKanban, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
@@ -84,7 +85,7 @@ export default function Projects(){
     if (searchParams.get("create") === "1") {
       setCreateOpen(true)
     }
-  }, [searchParams])
+  }, [searchParams, tagFilter])
 
   useEffect(() => {
     listTags()

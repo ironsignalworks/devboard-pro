@@ -62,6 +62,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (cancelled) return;
 
         if (isApiError(res)) {
+          // Unauthenticated on initial load is expected; route guard will redirect to /login.
+          if (res.status === 401) {
+            if (!hasLocalUser) {
+              await logout();
+              setAuthError(null);
+            }
+            return;
+          }
           if (!hasLocalUser) {
             await logout();
             setAuthError(res.message || "Auth validation failed");
