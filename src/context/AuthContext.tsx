@@ -19,6 +19,12 @@ type AuthContextType = {
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
+const OFFLINE_DEMO_USER: AuthUser = {
+  id: "demo-local",
+  email: "demo@local.dev",
+  name: "Demo User",
+  isGuest: true,
+};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(() => {
@@ -62,6 +68,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (cancelled) return;
 
         if (isApiError(res)) {
+          if (!hasLocalUser && !res.status) {
+            // Backend unavailable (e.g. DB down): allow local demo access.
+            setUser(OFFLINE_DEMO_USER);
+            localStorage.setItem("user", JSON.stringify(OFFLINE_DEMO_USER));
+            setAuthError(null);
+            return;
+          }
           // Unauthenticated on initial load is expected; route guard will redirect to /login.
           if (res.status === 401) {
             if (!hasLocalUser) {

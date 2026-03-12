@@ -7,6 +7,7 @@ import { useState } from "react";
 import { registerUser } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "@/components/ui/sonner";
+import { isApiError } from "@/api/client";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -20,6 +21,18 @@ export default function Register() {
   const [verifyUrl, setVerifyUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const loginOffline = () => {
+    const offlineUser = {
+      id: `offline-${Date.now()}`,
+      email: email.trim().toLowerCase(),
+      name: name.trim() || "Demo User",
+      isGuest: true,
+    };
+    login(offlineUser);
+    toast.success("Offline demo account created");
+    navigate("/");
+  };
+
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -31,7 +44,16 @@ export default function Register() {
     setVerifyUrl(null);
     setLoading(true);
     registerUser({ name, email, password })
-      .then((data: any) => {
+      .then((data) => {
+        if (isApiError(data)) {
+          if (!data.status) {
+            loginOffline();
+            return;
+          }
+          setError(data.message || "Registration failed");
+          toast.error(data.message || "Registration failed");
+          return;
+        }
         if (data?.user) {
           login(data.user);
           toast.success("Account created");
